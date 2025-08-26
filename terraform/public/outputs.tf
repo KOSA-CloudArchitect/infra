@@ -89,10 +89,8 @@ output "vpc_peering_connection_id" {
 # 서브넷 그룹 정보
 # =============================================================================
 
-output "rds_subnet_group_id" {
-  description = "ID of RDS subnet group"
-  value       = aws_db_subnet_group.rds.id
-}
+# RDS 서브넷 그룹은 현재 main.tf에 정의되지 않음
+# 필요시 main.tf에 aws_db_subnet_group 리소스를 추가해야 함
 
 
 
@@ -107,44 +105,44 @@ output "rds_subnet_group_id" {
 # EKS Security Groups
 output "eks_cluster_security_group_id" {
   description = "EKS cluster security group ID"
-  value       = module.eks.cluster_security_group_id
+  value       = var.create_eks_cluster ? module.eks[0].cluster_security_group_id : null
 }
 
 output "eks_node_security_group_id" {
   description = "EKS node security group ID"
-  value       = module.eks.node_security_group_id
+  value       = var.create_eks_cluster ? module.eks[0].node_security_group_id : null
 }
 
 output "eks_cluster_id" {
   description = "EKS cluster ID"
-  value       = module.eks.cluster_id
+  value       = var.create_eks_cluster ? module.eks[0].cluster_id : null
 }
 
 output "eks_cluster_arn" {
   description = "EKS cluster ARN"
-  value       = module.eks.cluster_arn
+  value       = var.create_eks_cluster ? module.eks[0].cluster_arn : null
 }
 
 output "eks_cluster_endpoint" {
   description = "EKS cluster endpoint"
-  value       = module.eks.cluster_endpoint
+  value       = var.create_eks_cluster ? module.eks[0].cluster_endpoint : null
 }
 
 output "eks_cluster_oidc_issuer_url" {
   description = "EKS cluster OIDC issuer URL"
-  value       = module.eks.cluster_oidc_issuer_url
+  value       = var.create_eks_cluster ? module.eks[0].cluster_oidc_issuer_url : null
 }
 
-output "eks_cluster_certificate_authority_data" {
-  description = "EKS cluster certificate authority data"
-  value       = module.eks.cluster_certificate_authority_data
-}
+#output "eks_cluster_certificate_authority_data" {
+#  description = "EKS cluster certificate authority data"
+#  value       = module.eks.cluster_certificate_authority_data
+#}
 
 # EKS Node Groups
-output "eks_nodegroup_ids" {
-  description = "EKS managed node group IDs"
-  value       = module.eks.eks_managed_node_groups_autoscaling_group_names
-}
+#output "eks_nodegroup_ids" {
+#  description = "EKS managed node group IDs"
+#  value       = module.eks.eks_managed_node_groups_autoscaling_group_names
+#}
 
 
 

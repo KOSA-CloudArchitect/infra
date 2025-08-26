@@ -61,8 +61,6 @@ module "vpc_app" {
   single_nat_gateway      = true
 
   tags = {
-    Name        = "vpc-app"
-    Environment = var.environment
     Owner       = var.owner
     CostCenter  = var.cost_center
     Purpose     = "Application"

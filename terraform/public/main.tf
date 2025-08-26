@@ -31,20 +31,6 @@ provider "aws" {
 }
 
 # =============================================================================
-# 로컬 변수 (locals) 정의
-# =============================================================================
-locals {
-  # 가용 영역 목록
-  azs = var.availability_zones
-  
-  # public 서브넷 CIDR 블록 목록 생성
-  public_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_app_cidr, 8, k + 48)]
-  
-  # private 서브넷 CIDR 블록 목록 생성
-  private_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_app_cidr, 4, k)]
-}
-
-# =============================================================================
 # VPC 구성
 # =============================================================================
 
@@ -159,21 +145,7 @@ resource "aws_route" "db_to_app" {
 # =============================================================================
 
 
-# =============================================================================
-# Subnet Groups for RDS
-# =============================================================================
 
-resource "aws_db_subnet_group" "rds" {
-  name       = "${var.project_name}-rds-subnet-group"
-  subnet_ids = [module.vpc_db.private_subnets[0], module.vpc_db.private_subnets[1]]  # AZ-a, AZ-b만 사용
-  
-  tags = {
-    Name        = "${var.project_name}-rds-subnet-group"
-    Environment = var.environment
-    Owner       = var.owner
-    CostCenter  = var.cost_center
-  }
-}
 
 
 
