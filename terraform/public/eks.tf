@@ -7,6 +7,8 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
 
+  count   = var.create_eks_cluster ? 1 : 0
+
   name               = var.eks_cluster_name
   kubernetes_version = "1.33"
 
@@ -21,7 +23,6 @@ module "eks" {
 
   # Public endpoint 활성화 (노드 조인을 위해)
   endpoint_public_access = true
-
   # 클러스터 생성자에게 관리자 권한 부여
   enable_cluster_creator_admin_permissions = true
 
@@ -36,6 +37,7 @@ module "eks" {
       # AL2023은 EKS 1.30+ 에서 기본 AMI 타입
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["t3.medium"]
+      # auto scailng
       min_size     = 1
       max_size     = 3
       desired_size = 1

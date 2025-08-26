@@ -2,6 +2,13 @@
 # 기본 설정
 # =============================================================================
 
+# AWS EKS 배포 여부 설정
+variable "create_eks_cluster" {
+  description = "Set to false to skip EKS cluster creation."
+  type        = bool
+  default     = false
+}
+
 # AWS Region
 variable "aws_region" {
   description = "AWS region"

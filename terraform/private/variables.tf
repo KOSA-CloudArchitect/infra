@@ -98,6 +98,13 @@ variable "vpc_app_private_subnets" {
 # EKS 설정
 # =============================================================================
 
+# EKS Cluster Creation Flag
+variable "create_eks_cluster" {
+  description = "Whether to create EKS cluster"
+  type        = bool
+  default     = false
+}
+
 # EKS Cluster Configuration
 variable "eks_cluster_name" {
   description = "Name of the EKS cluster"
