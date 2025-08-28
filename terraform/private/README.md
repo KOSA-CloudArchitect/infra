@@ -108,6 +108,10 @@ terraform plan
 
 # 배포 실행
 terraform apply
+
+# eks만 배포 실행
+# variables.tf에 create_eks = true/false 확인
+terraform apply -target=module.eks
 ```
 
 ### **4. EKS 접근**
