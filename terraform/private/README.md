@@ -112,6 +112,11 @@ terraform apply
 # eks만 배포 실행
 # variables.tf에 create_eks = true/false 확인
 terraform apply -target=module.eks
+
+
+# eks만 배포 삭제
+terraform destroy -target=module.eks
+
 ```
 
 ### **4. EKS 접근**
