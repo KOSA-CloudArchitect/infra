@@ -1,5 +1,5 @@
 pipeline {
-    // 검증에 필요한 도구(kubectl, helm)가 포함된 Agent Pod를 정의
+    // 검증에 필요한 도구(kubectl, helm)가 포함된 Agent Pod를 정의 test
     agent {
         kubernetes {
             label 'validator-agent'
