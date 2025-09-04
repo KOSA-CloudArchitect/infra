@@ -4,21 +4,22 @@
 
 images:
   airflow:
-    repository: apache/airflow
-    tag: 3.0.2
+    repository: hahxowns/airflow_add_pip
+    tag: 3.0.6-amd2
     pullPolicy: IfNotPresent
 
 # KubernetesExecutor 사용
 executor: KubernetesExecutor 
 
-# Python 및 기타 라이브러리 추가 설치
-airflow:
-  extraPipPackages:
-#    - "apache-airflow-providers-apache-kafka"
-#    - "apache-airflow-providers-postgres"
-#    - "psycopg2-binary"
-    - "kafka-python"
 
+# airflow:
+#   extraPipPackages:
+#     - "apache-airflow-providers-apache-kafka==1.10.0"
+    
+
+fernetKeySecretName: "k8sa-airflow-fetnet-key"
+#jwtSecretName: "k8sa-airflow-jwt-key"
+webserverSecretKeySecretName: "k8sa-airflow-jwt-key"
 # # Kafka 연결을 위한 환경변수 설정
 # config:
 #   AIRFLOW__CORE__EXECUTOR: KubernetesExecutor
@@ -43,49 +44,115 @@ dags:
     # subPath를 제거하여 Git 저장소 루트의 dags 폴더를 /opt/airflow/dags에 마운트
 
 
-# 내부 Postgres 사용 (차트 내 postgresql 서브차트)
+# 외부 Postgres 사용 (차트 내 postgresql 서브차트)
 data:
   metadataConnection:
     user: "postgres"
-    pass: "airflow"
+    pass: "NewSecurePassword2024!"
     protocol: postgresql
-    host: "34.64.178.184"
+    host: "airflow-metadata-db.cxkoo6wi2dyy.ap-northeast-2.rds.amazonaws.com"
     port: 5432
-    db: "postgres"
-    sslmode: disable
+    db: "airflow"
+    sslmode: "require"
     # Add custom annotations to the metadata connection secret
-    secretAnnotations: {}
+
+
 
 # # 외부 데이터베이스 설정 (PostgreSQL)
 postgresql:
   enabled: false # 차트 내장 DB 사용 안 함
 
-# externalDatabase:
-#   type: postgres
-#   host: "34.64.178.184"
-#   port: 5432
-#   user: "postgres"
-#   #password: "airflow"
-#   passwordSecret: "airflow-postgresql" # DB credentials secret 이름
-#   database: "postgres"
 
-# 외부 데이터베이스 설정 (PostgreSQL)
-# metadataConnection:
-#   user: "postgres"
-#   pass: "airflow"
-#   protocol: postgresql
-#   host: "34.64.178.184"
-#   port: 5432
-#   db: "postgres"
-#   sslmode: disable
+logs:
+  persistence:
+    enabled: false
+  
+triggerer:
+  persistence:
+    enabled: false
+  
+  env:
+    - name: PYTHONPATH
+      value: "/opt/airflow/dags/repo/dags:/opt/airflow/dags"
+
+    - name: AIRFLOW__LOGGING__LOGGING_LEVEL
+      value: "INFO"
+  
+  serviceAccount:
+    create: false
+    name: airflow-irsa
+
+# airflow-irsa = S3 IAM Role Account
+workers:
+  serviceAccount:
+    create: false
+    name: airflow-irsa
+  
+  env:
+    - name: PYTHONPATH
+      value: "/opt/airflow/dags/repo/dags:/opt/airflow/dags"
 
 
+apiServer:
+  serviceAccount:
+    create: false
+    name: airflow-irsa
+
+dagProcessor:
+  serviceAccount:
+    create: false
+    name: airflow-irsa
+  
+  env:
+    - name: PYTHONPATH
+      value: "/opt/airflow/dags/repo/dags:/opt/airflow/dags"
 
 webserver:
   defaultUser:
     enabled: true
     username: admin
     password: admin
+  
+  env:
+    - name: PYTHONPATH
+      value: "/opt/airflow/dags/repo/dags:/opt/airflow/dags"
+
+
+# scheduler:
+#   command:
+#     - "bash"
+#     - "-c"
+#     - "pip install apache-airflow-providers-apache-kafka && exec airflow scheduler"
+
+# dagProcessor:
+#   command:
+#     - "bash"
+#     - "-c"
+#     - "pip install apache-airflow-providers-apache-kafka && exec airflow dag-processor"
+
+# triggerer:
+#   command:
+#     - "bash"
+#     - "-c"
+#     - "pip install apache-airflow-providers-apache-kafka && exec airflow triggerer"
+
+
+
+# logging 설정
+config:
+  logging:
+    remote_logging: "True"
+    remote_base_log_folder: "s3://hihypipe-airflow-logs/log"
+    remote_log_conn_id: "s3_conn"
+
+connections:
+  - id: s3_conn
+    type: s3
+    extra: |
+      {
+      "region_name": "ap-northeast-2"
+      }
+
 
 # triggerer:
 #   replicas: 1
