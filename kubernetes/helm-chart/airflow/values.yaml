@@ -9,7 +9,7 @@ images:
     pullPolicy: IfNotPresent
 
 # KubernetesExecutor 사용
-executor KubernetesExecutor 
+executor: KubernetesExecutor 
 
 
 # airflow:
