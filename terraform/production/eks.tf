@@ -25,6 +25,7 @@ module "eks" {
       most_recent = true
       before_compute = true
       resolve_conflicts = "OVERWRITE"
+      service_account_role_arn = aws_iam_role.cni_role[0].arn
     }
   }
 
@@ -211,7 +212,7 @@ module "eks" {
     # Jenkins 역할 (Jenkins가 활성화된 경우에만)
     var.create_jenkins_server ? {
       jenkins = {
-        principal_arn = "arn:aws:iam::150297826798:role/${var.project_name}-Jenkins-EKS-ECR-Role"
+        principal_arn = aws_iam_role.jenkins_role[0].arn
         policy_associations = {
           admin = {
             policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
@@ -268,13 +269,14 @@ module "eks" {
 # 현재 AWS 계정 정보 조회
 data "aws_caller_identity" "current" {}
 
+
 # =============================================================================
 # EBS CSI Driver Helm 차트 설치 (Kubernetes 1.33 호환성)
 # =============================================================================
 
 # EBS CSI Driver Helm 차트 설치
 resource "helm_release" "ebs_csi_driver" {
-  count = var.create_eks_cluster ? 1 : 0
+  count = var.create_eks_cluster && var.create_k8s_resources ? 1 : 0
   
   name       = "aws-ebs-csi-driver"
   repository = "https://kubernetes-sigs.github.io/aws-ebs-csi-driver"
