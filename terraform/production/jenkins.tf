@@ -133,6 +133,7 @@ resource "aws_instance" "jenkins_controller" {
   
   ami           = var.jenkins_ami_id
   instance_type = var.jenkins_instance_type
+  key_name      = var.jenkins_key_pair_name
 
   # 프라이빗 서브넷에 생성하고 퍼블릭 IP는 할당하지 않음
   subnet_id                   = module.vpc_app.private_subnets[0]
@@ -146,10 +147,13 @@ resource "aws_instance" "jenkins_controller" {
   user_data = <<-EOF
               #!/bin/bash
               sudo dnf update -y
+              # wget을 먼저 설치해줍니다.
+              sudo dnf install wget -y
               sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
               sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
               sudo dnf upgrade -y
-              sudo dnf install java-17-amazon-corretto -y
+              # Java 11 버전을 명시적으로 설치합니다.
+              sudo dnf install java-11-amazon-corretto -y
               sudo dnf install jenkins -y
               sudo systemctl enable jenkins
               sudo systemctl start jenkins
