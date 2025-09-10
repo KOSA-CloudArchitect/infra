@@ -35,6 +35,7 @@ module "eks" {
   endpoint_public_access                   = true
   endpoint_private_access                  = true
 
+
   # EKS Managed Node Groups (새로운 구조)
   eks_managed_node_groups = {
     # Core 노드그룹 - 시스템 애드온, Web/API, 모니터링 코어
@@ -205,6 +206,31 @@ module "eks" {
       #   }
       # }
     }
+    
+    # LLM 모델 서빙용 고사양 노드그룹
+    llm-model-on = {
+      ami_type       = "AL2023_ARM_64_STANDARD"
+      instance_types = var.llm_model_node_group.instance_types
+      min_size       = var.llm_model_node_group.min_size
+      max_size       = var.llm_model_node_group.max_size
+      desired_size   = var.llm_model_node_group.desired_size
+      disk_size      = var.llm_model_node_group.disk_size
+      capacity_type  = "ON_DEMAND"
+      
+      labels = {
+        workload      = "llm-model"
+        capacity-type = "on-demand"
+      }
+      
+      # LLM 모델 전용 테인트
+      taints = {
+        llm_model = {
+          key    = "workload"
+          value  = "llm-model"
+          effect = "NO_SCHEDULE"
+        }
+      }
+    }
   }
 
   # EKS Access Entries (IAM 접근 제어)
@@ -323,5 +349,22 @@ resource "null_resource" "restrict_eks_public_access" {
   }
 
   depends_on = [module.eks]
+}
+
+# =============================================================================
+# EKS 클러스터 보안 그룹에 Jenkins 서버 접근 허용
+# =============================================================================
+
+# Jenkins 서버에서 EKS API 서버로의 접근을 허용하는 보안 그룹 규칙
+resource "aws_security_group_rule" "allow_jenkins_to_eks_api" {
+  count = var.create_jenkins_server && var.create_eks_cluster ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.jenkins_sg[0].id
+  security_group_id        = module.eks[0].cluster_security_group_id
+  description              = "Allow Jenkins Controller to access EKS API"
 }
 

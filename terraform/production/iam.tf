@@ -178,6 +178,45 @@ resource "aws_iam_role_policy_attachment" "cni_policy_attachment" {
 }
 
 # =============================================================================
+# Jenkins Agent Pod용 IAM 역할 (IRSA for ECR Push)
+# =============================================================================
+resource "aws_iam_role" "jenkins_agent_role" {
+  count = var.create_jenkins_server ? 1 : 0
+  
+  name = "${var.project_name}-Jenkins-Agent-ECR-Role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity",
+      Effect = "Allow",
+      Principal = {
+        Federated = module.eks[0].oidc_provider_arn
+      },
+      Condition = {
+        StringEquals = {
+          "${module.eks[0].oidc_provider}:sub" = "system:serviceaccount:jenkins:jenkins-agent"
+        }
+      }
+    }]
+  })
+  
+  tags = {
+    Name        = "${var.project_name}-Jenkins-Agent-Role"
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "jenkins_agent_ecr_policy" {
+  count = var.create_jenkins_server ? 1 : 0
+  
+  role       = aws_iam_role.jenkins_agent_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+# =============================================================================
 # Cluster Autoscaler용 IAM 역할 (주석처리됨)
 # =============================================================================
 

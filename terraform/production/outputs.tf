@@ -8,8 +8,8 @@ output "jenkins_instance_id" {
 }
 
 output "jenkins_instance_private_ip" {
-  description = "Jenkins instance private IP"
-  value       = var.create_jenkins_server ? aws_instance.jenkins_controller[0].private_ip : null
+  description = "The private IP of the Jenkins EC2 instance"
+  value       = var.create_jenkins_server ? aws_instance.jenkins_controller[0].private_ip : "Jenkins not created"
 }
 
 output "jenkins_iam_role_arn" {
@@ -36,6 +36,11 @@ output "jenkins_access_info" {
     web_url = "http://${aws_lb.jenkins_alb[0].dns_name}"
     ssh_command = "ssh -i [key-pair] ec2-user@${aws_instance.jenkins_controller[0].private_ip}"
   } : null
+}
+
+output "jenkins_url" {
+  description = "URL to access the Jenkins UI"
+  value       = var.create_jenkins_server ? "http://${aws_lb.jenkins_alb[0].dns_name}" : "Jenkins not created"
 }
 
 # =============================================================================
@@ -443,17 +448,17 @@ output "s3_buckets_info" {
 
 output "airflow_irsa_role_arn" {
   description = "Airflow IRSA role ARN"
-  value       = var.create_s3_buckets ? aws_iam_role.airflow_irsa[0].arn : null
+  value       = var.create_s3_buckets && var.create_k8s_resources ? aws_iam_role.airflow_irsa[0].arn : null
 }
 
 output "spark_irsa_role_arn" {
   description = "Spark IRSA role ARN"
-  value       = var.create_s3_buckets ? aws_iam_role.spark_irsa[0].arn : null
+  value       = var.create_s3_buckets && var.create_k8s_resources ? aws_iam_role.spark_irsa[0].arn : null
 }
 
 output "irsa_service_accounts_info" {
   description = "IRSA service accounts information"
-  value = var.create_s3_buckets ? {
+  value = var.create_s3_buckets && var.create_k8s_resources ? {
     airflow_irsa = {
       role_arn = aws_iam_role.airflow_irsa[0].arn
       service_account_name = "airflow-irsa"

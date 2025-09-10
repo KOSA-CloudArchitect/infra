@@ -98,8 +98,8 @@ module "vpc_app" {
   public_subnets  = var.vpc_app_public_subnets
   private_subnets = var.vpc_app_private_subnets
 
-  enable_nat_gateway      = true
-  single_nat_gateway      = true
+  enable_nat_gateway = var.enable_nat_gateway
+  single_nat_gateway = var.single_nat_gateway
 
   tags = {
     Owner       = var.owner

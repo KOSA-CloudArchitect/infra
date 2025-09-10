@@ -146,17 +146,27 @@ resource "aws_instance" "jenkins_controller" {
   # EC2 부팅 시 젠킨스를 설치하는 스크립트 (Amazon Linux 2023)
   user_data = <<-EOF
               #!/bin/bash
+              # yum 대신 dnf 사용 (Amazon Linux 2023 권장)
               sudo dnf update -y
-              # wget을 먼저 설치해줍니다.
+              
+              # 1. wget 설치 (누락되었던 부분)
               sudo dnf install wget -y
+              
+              # 2. Jenkins 저장소 설정
               sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
               sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
-              sudo dnf upgrade -y
-              # Java 11 버전을 명시적으로 설치합니다.
+              
+              # 3. Java 11 설치 (Amazon Linux 2023 방식)
               sudo dnf install java-11-amazon-corretto -y
+              
+              # 4. Jenkins 설치
               sudo dnf install jenkins -y
+              
+              # 5. Jenkins 서비스 시작 및 활성화
               sudo systemctl enable jenkins
               sudo systemctl start jenkins
+              
+              # 6. Git 설치
               sudo dnf install -y git
               EOF
 
@@ -181,5 +191,54 @@ resource "aws_lb_target_group_attachment" "jenkins_attachment" {
   target_group_arn = aws_lb_target_group.jenkins_tg[0].arn
   target_id        = aws_instance.jenkins_controller[0].id
   port             = 8080
+}
+
+# =============================================================================
+# Bastion Host Security for SSH Access
+# =============================================================================
+
+# 1. 베스천 호스트 자체를 위한 보안 그룹 생성
+resource "aws_security_group" "bastion_sg" {
+  count = var.create_jenkins_server ? 1 : 0
+
+  name_prefix = "${var.project_name}-bastion-sg-"
+  vpc_id      = module.vpc_app.vpc_id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    # variables.tf에 정의된 IP 주소만 허용
+    cidr_blocks = [var.my_ip_for_bastion]
+    description = "Allow SSH from my IP"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.project_name}-bastion-sg"
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+  }
+}
+
+# 2. 젠킨스 보안 그룹에 '베스천 호스트로부터의 SSH 접속'을 허용하는 규칙 추가
+resource "aws_security_group_rule" "allow_ssh_from_bastion" {
+  count = var.create_jenkins_server ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 22
+  to_port                  = 22
+  protocol                 = "tcp"
+  # 소스를 IP가 아닌, 위에서 만든 베스천 호스트의 보안 그룹 ID로 지정
+  source_security_group_id = aws_security_group.bastion_sg[0].id
+  security_group_id        = aws_security_group.jenkins_sg[0].id
+  description              = "Allow SSH from Bastion Host"
 }
 
