@@ -15,11 +15,13 @@ spec:
   # kubectl 명령어를 위한 컨테이너
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ["sleep"], args: ["infinity"]
+    command: ["sleep"]
+    args: ["infinity"]
   # helm 명령어를 위한 컨테이너
   - name: helm
     image: alpine/helm:latest
-    command: ["sleep"], args: ["infinity"]
+    command: ["sleep"]
+    args: ["infinity"]
 """
         }
     }
