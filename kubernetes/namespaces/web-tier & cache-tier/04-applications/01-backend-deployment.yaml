@@ -83,7 +83,7 @@ spec:
       
       containers:
       - name: backend
-        image: placeholder/backend:latest
+        image: backend-placeholder
         imagePullPolicy: IfNotPresent
         
         ports:

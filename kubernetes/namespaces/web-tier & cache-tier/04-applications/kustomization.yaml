@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 이 디렉토리에서 관리할 쿠버네티스 리소스 목록을 정의합니다.
+resources:
+- 01-backend-deployment.yaml
+- 02-websocket-deployment.yaml
+- 03-frontend-deployment.yaml
+# 필요한 다른 YAML 파일이 있다면 여기에 추가합니다.
+
+# 이미지 교체 규칙을 정의합니다.
+images:
+- name: backend-placeholder # 01-backend-deployment.yaml에 지정한 임시 이름
+  newName: $(cat ../../../../../image/web-backend.txt) # Jenkins가 업데이트한 이미지 정보 파일 경로
