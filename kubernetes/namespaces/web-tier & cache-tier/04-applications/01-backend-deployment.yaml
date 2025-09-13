@@ -83,8 +83,8 @@ spec:
       
       containers:
       - name: backend
-        image: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-tier/back-end:latest
-        imagePullPolicy: Always
+        image: PLACEHOLDER_BACKEND_IMAGE
+        imagePullPolicy: IfNotPresent
         
         ports:
         - name: http
@@ -278,38 +278,34 @@ spec:
         - name: prisma-cache
           mountPath: /app/node_modules/.prisma
         
-        # Liveness Probe (백엔드 헬스체크) - 간단한 포트 체크로 변경
+        # Liveness Probe (백엔드 헬스체크) - 더 관대한 설정
         livenessProbe:
           tcpSocket:
             port: http
-          initialDelaySeconds: 60
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+          successThreshold: 1
+        
+        # Readiness Probe (백엔드 준비 상태 확인) - TCP 포트 체크로 활성화
+        readinessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
           successThreshold: 1
         
-        # Readiness Probe (백엔드 준비 상태 확인) - 임시 비활성화
-        # readinessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: http
-        #     httpHeaders:
-        #     - name: User-Agent
-        #       value: "k8s-readiness-probe"
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 5
-        #   timeoutSeconds: 3
-        #   failureThreshold: 3
-        #   successThreshold: 1
-        
-        # Startup Probe (초기 시작 시간 고려) - 간단한 포트 체크로 변경
+        # Startup Probe (초기 시작 시간 고려) - 더 관대한 설정
         startupProbe:
           tcpSocket:
             port: http
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 12
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 20
           successThreshold: 1
       
       # 볼륨 정의
