@@ -1,0 +1,236 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: web-tier
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: frontend
+      app.kubernetes.io/name: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/name: frontend
+        app.kubernetes.io/part-of: review-analysis-system
+        app.kubernetes.io/component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+
+      # (옵션) 백엔드 포트 대기
+      initContainers:
+      - name: wait-for-backend
+        image: busybox:1.36
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Waiting for backend service..."
+          # 서비스 이름으로 연결 시도
+          until nc -z backend-service.web-tier.svc.cluster.local 3001; do
+            echo "Backend not ready, waiting..."
+            sleep 5
+          done
+          echo "Backend ready!"
+        resources:
+          requests: { memory: "64Mi", cpu: "50m" }
+          limits:   { memory: "128Mi", cpu: "100m" }
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 101
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: { drop: ["ALL"] }
+
+      containers:
+      - name: frontend
+        image: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-tier/front-end:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+
+        # (선택) 기존 공용 ConfigMap 사용 시 유지
+        envFrom:
+        - configMapRef:
+            name: frontend-config
+
+        env:
+        - name: APP_ENV
+          value: "production"
+
+        # env.js 마운트
+        volumeMounts:
+        - name: frontend-env
+          mountPath: /app/public/env.js
+          subPath: env.js
+
+        # PROBES (컨테이너 블록 안에만 1회 정의)
+        readinessProbe:
+          httpGet: { path: /health, port: http }
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 3
+        livenessProbe:
+          httpGet: { path: /health, port: http }
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet: { path: /health, port: http }
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
+
+        resources:
+          requests: { memory: "128Mi", cpu: "50m" }
+          limits:   { memory: "512Mi", cpu: "500m" }
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities: { drop: ["ALL"] }
+
+      # ⬇️ volumes 는 spec.template.spec 바로 아래
+      volumes:
+      - name: frontend-env
+        configMap:
+          name: frontend-env
+          items:
+          - key: env.js
+            path: env.js
+
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+
+---
+# =========================
+# 2) Frontend Service (ClusterIP)
+# =========================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: web-tier
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend-service
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+    app.kubernetes.io/name: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  sessionAffinity: None
+
+---
+# =========================
+# 3) HPA
+# =========================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: web-tier
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend-hpa
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: frontend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend-deployment
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      selectPolicy: Min
+
+---
+# =========================
+# 4) PodDisruptionBudget
+# =========================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: web-tier
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend-pdb
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+      app.kubernetes.io/name: frontend

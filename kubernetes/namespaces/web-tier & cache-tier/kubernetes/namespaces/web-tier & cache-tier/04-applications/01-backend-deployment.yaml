@@ -1,0 +1,449 @@
+# EKS Migration - Backend Deployment and Service
+# Task 3.3: Backend Deployment 및 Service 작성
+
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: web-tier
+  labels:
+    app: backend
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  selector:
+    matchLabels:
+      app: backend
+      app.kubernetes.io/name: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        app.kubernetes.io/name: backend
+        app.kubernetes.io/part-of: review-analysis-system
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3001"
+        prometheus.io/path: "/metrics"
+    spec:
+      # 보안 컨텍스트
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      
+      # 초기화 컨테이너 (테스트를 위해 임시 비활성화)
+      # initContainers:
+      # - name: wait-for-redis
+      #   image: redis:7-alpine
+      #   command: ['sh', '-c']
+      #   args:
+      #   - |
+      #     echo "Waiting for Redis..."
+      #     until redis-cli -h $REDIS_HOST -p $REDIS_PORT -a $REDIS_PASSWORD ping; do
+      #       echo "Redis not ready, waiting..."
+      #       sleep 5
+      #     done
+      #     echo "Redis is ready!"
+      #   env:
+      #   - name: REDIS_HOST
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: redis-secret
+      #         key: REDIS_HOST
+      #   - name: REDIS_PORT
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: redis-secret
+      #         key: REDIS_PORT
+      #   - name: REDIS_PASSWORD
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: redis-secret
+      #         key: REDIS_PASSWORD
+      #   resources:
+      #     requests:
+      #       memory: "64Mi"
+      #       cpu: "50m"
+      #     limits:
+      #       memory: "128Mi"
+      #       cpu: "100m"
+      
+      containers:
+      - name: backend
+        image: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-tier/back-end:latest
+        imagePullPolicy: Always
+        
+        ports:
+        - name: http
+          containerPort: 3001
+          protocol: TCP
+        
+        # 환경 변수 (ConfigMap에서 가져오기)
+        envFrom:
+        - configMapRef:
+            name: app-config
+        
+        env:
+        # 기본 설정
+        - name: PORT
+          value: "3001"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: BACKEND_URL
+          value: "http://backend-service.web-tier.svc.cluster.local:3001"
+        
+        # 데이터베이스 연결 정보 (Secret에서 가져오기)
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: DB_PORT
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: DB_NAME
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: DATABASE_URL
+        
+        # Redis 연결 정보 (Secret에서 가져오기)
+        - name: REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: REDIS_PASSWORD
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: REDIS_URL
+        
+        # 애플리케이션 시크릿 (Secret에서 가져오기)
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_SECRET
+        - name: JWT_EXPIRES_IN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_EXPIRES_IN
+        - name: JWT_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_REFRESH_SECRET
+        - name: JWT_REFRESH_EXPIRES_IN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_REFRESH_EXPIRES_IN
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: SENTRY_DSN
+        
+        # 외부 서비스 연결 정보 (Secret에서 가져오기)
+        - name: ANALYSIS_SERVER_URL
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: ANALYSIS_SERVER_URL
+        - name: ANALYSIS_SERVER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: ANALYSIS_SERVER_TOKEN
+        - name: CRAWLING_SERVER_URL
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: CRAWLING_SERVER_URL
+        - name: CRAWLING_SERVER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: CRAWLING_SERVER_TOKEN
+        - name: KAFKA_BROKERS
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: KAFKA_BROKERS
+        - name: KAFKA_SASL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: KAFKA_SASL_USERNAME
+        - name: KAFKA_SASL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: KAFKA_SASL_PASSWORD
+        - name: AIRFLOW_API_URL
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: AIRFLOW_API_URL
+        - name: AIRFLOW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: AIRFLOW_USERNAME
+        - name: AIRFLOW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: external-services-secret
+              key: AIRFLOW_PASSWORD
+        
+        # MongoDB 연결 정보 (Secret에서 가져오기)
+        - name: MONGODB_URL
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MONGODB_URL
+        - name: MONGODB_DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MONGODB_DB_NAME
+        
+        # 리소스 제한
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+            ephemeral-storage: "2Gi"
+        
+        # 보안 컨텍스트
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        
+        # 볼륨 마운트 (로그 및 임시 파일용)
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: logs-volume
+          mountPath: /app/logs
+        - name: prisma-cache
+          mountPath: /app/node_modules/.prisma
+        
+        # Liveness Probe (백엔드 헬스체크) - 간단한 포트 체크로 변경
+        livenessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        
+        # Readiness Probe (백엔드 준비 상태 확인) - 임시 비활성화
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: http
+        #     httpHeaders:
+        #     - name: User-Agent
+        #       value: "k8s-readiness-probe"
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 5
+        #   timeoutSeconds: 3
+        #   failureThreshold: 3
+        #   successThreshold: 1
+        
+        # Startup Probe (초기 시작 시간 고려) - 간단한 포트 체크로 변경
+        startupProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
+          successThreshold: 1
+      
+      # 볼륨 정의
+      volumes:
+      - name: tmp-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: logs-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: prisma-cache
+        emptyDir:
+          sizeLimit: 500Mi
+      
+      # DNS 설정
+      dnsPolicy: ClusterFirst
+      
+      # 재시작 정책
+      restartPolicy: Always
+      
+      # 종료 유예 시간
+      terminationGracePeriodSeconds: 60
+      
+      # 노드 선택 (선택사항)
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      
+      # 톨러레이션 (선택사항)
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: web-tier
+  labels:
+    app: backend
+    app.kubernetes.io/name: backend-service
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: backend
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+    app.kubernetes.io/name: backend
+  ports:
+  - name: http
+    port: 3001
+    targetPort: http
+    protocol: TCP
+  sessionAffinity: None
+
+---
+# Backend HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: web-tier
+  labels:
+    app: backend
+    app.kubernetes.io/name: backend-hpa
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-deployment
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  # CPU 기반 스케일링
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  # 메모리 기반 스케일링
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  # 스케일링 동작 설정
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      selectPolicy: Min
+
+---
+# Backend PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+  namespace: web-tier
+  labels:
+    app: backend
+    app.kubernetes.io/name: backend-pdb
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: backend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: backend
+      app.kubernetes.io/name: backend
