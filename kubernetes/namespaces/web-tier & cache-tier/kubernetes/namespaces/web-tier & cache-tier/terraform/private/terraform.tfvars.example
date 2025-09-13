@@ -1,0 +1,81 @@
+# =============================================================================
+# Terraform Variables Example File
+# =============================================================================
+# 이 파일을 terraform.tfvars로 복사하고 실제 값으로 수정하세요.
+# cp terraform.tfvars.example terraform.tfvars
+
+# =============================================================================
+# 기본 설정
+# =============================================================================
+
+# AWS Region
+aws_region = "ap-northeast-2"
+
+# Project Name
+project_name = "hihypipe"
+
+# Environment
+environment = ""
+
+# Owner
+owner = "hihypipe-team"
+
+# Cost Center
+cost_center = "hihypipe-network"
+
+# =============================================================================
+# 가용영역 및 네트워크 설정
+# =============================================================================
+
+# Availability Zones (필요시 수정)
+availability_zones = [
+  "ap-northeast-2a",
+  "ap-northeast-2b", 
+  "ap-northeast-2c"
+]
+
+# VPC CIDR Blocks (필요시 수정)
+vpc_db_cidr  = "172.16.0.0/17"
+vpc_app_cidr = "172.16.128.0/17"
+
+# VPC-DB Private Subnets (필요시 수정)
+vpc_db_private_subnets = [
+  "172.16.0.0/20",    # Private-DB AZ-a
+  "172.16.16.0/20",   # Private-DB AZ-b
+  "172.16.32.0/20",   # Private-DB AZ-c
+]
+
+# VPC-APP Public Subnets (필요시 수정)
+vpc_app_public_subnets = [
+  "172.16.128.0/20",  # Public AZ-a
+  "172.16.144.0/20",  # Public AZ-b
+  "172.16.160.0/20"   # Public AZ-c
+]
+
+# VPC-APP Private Subnets (필요시 수정)
+vpc_app_private_subnets = [
+  "172.16.176.0/20",  # Private AZ-a
+  "172.16.192.0/20",  # Private AZ-b
+  "172.16.208.0/20"   # Private AZ-c
+]
+
+# =============================================================================
+# EKS 설정
+# =============================================================================
+
+# EKS Cluster Name
+eks_cluster_name = "hihypipe-cluster"
+
+
+
+# =============================================================================
+# 태그 설정
+# =============================================================================
+
+# Common Tags
+common_tags = {
+  Project     = "hihypipe"
+  ManagedBy   = "terraform"
+  Environment = ""
+  Purpose     = "Infrastructure"
+}
