@@ -84,7 +84,7 @@ spec:
       containers:
       - name: backend
         image: backend-placeholder:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - name: http
           containerPort: 3001
@@ -311,6 +311,7 @@ spec:
           failureThreshold: 12
           successThreshold: 1
       
+
       # 볼륨 정의
       volumes:
       - name: tmp-volume

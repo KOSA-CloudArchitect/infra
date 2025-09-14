@@ -1,3 +1,4 @@
+# kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -6,5 +7,11 @@ resources:
 
 images:
 - name: backend-placeholder
-  newName: placeholder-registry/placeholder-image
-  newTag: placeholder-tag
+  newName: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
+  newTag: latest # 또는 실제 이미지 태그
+
+patches:
+- path: patch-imagepullsecret.yaml
+  target:
+    kind: Deployment
+    name: backend-deployment
