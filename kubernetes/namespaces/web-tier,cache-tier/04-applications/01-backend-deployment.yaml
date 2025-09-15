@@ -36,14 +36,14 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "3001"
         prometheus.io/path: "/metrics"
+    # ✅ spec 블록을 metadata와 같은 레벨로 수정
     spec:
       # 보안 컨텍스트
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
         runAsGroup: 1001
-        fsGroup: 1001
-      
+        fsGroup: 1001      
       # 초기화 컨테이너 (테스트를 위해 임시 비활성화)
       # initContainers:
       # - name: wait-for-redis
