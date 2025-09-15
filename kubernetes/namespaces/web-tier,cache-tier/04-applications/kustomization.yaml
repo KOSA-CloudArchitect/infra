@@ -8,7 +8,7 @@ resources:
 images:
 - name: backend-placeholder
   newName: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
-  newTag: "1086775" # 또는 실제 이미지 태그
+  newTag: f5840b7
 
 patches:
 - path: patch-imagepullsecret.yaml
