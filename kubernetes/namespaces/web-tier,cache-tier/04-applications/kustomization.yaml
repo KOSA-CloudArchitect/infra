@@ -8,7 +8,7 @@ resources:
 images:
 - name: backend-placeholder
   newName: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
-  newTag: f5840b7
+  newTag: de64867
 
 patches:
 - path: patch-imagepullsecret.yaml
