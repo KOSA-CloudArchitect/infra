@@ -65,7 +65,7 @@ terraform apply -target=aws_iam_instance_profile.karpenter_node
 
 ### 2단계: Karpenter Helm 차트 설치
 ```bash
-# Karpenter 컨트롤러 설치
+# Karpenter 컨트롤러 설치 (0.37)
 terraform plan -target=helm_release.karpenter
 terraform apply -target=helm_release.karpenter
 ```
