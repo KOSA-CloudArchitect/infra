@@ -122,14 +122,16 @@ module "eks" {
         capacity-type = "on-demand"
       }
       
-      # 시스템 파드 스케줄링을 위해 테인트 주석처리
-      # taints = {
-      #   spark_driver = {
-      #     key    = "spark"
-      #     value  = "driver"
-      #     effect = "NO_SCHEDULE"
-      #   }
-      # }
+
+      # Spark Driver 전용 테인트
+      taints = {
+        spark_driver = {
+          key    = "spark"
+          value  = "driver"
+          effect = "NO_SCHEDULE"
+        }
+      }
+
     }
     
     # Spark Executor Spot 노드그룹 - Executors
@@ -147,7 +149,16 @@ module "eks" {
         capacity-type = "spot"
       }
       
-      # Spot 인스턴스는 테인트 없음
+
+      # Spark Executor 전용 테인트
+      taints = {
+        spark_executor = {
+          key    = "spark"
+          value  = "executor"
+          effect = "NO_SCHEDULE"
+        }
+      }
+
     }
     
     # Kafka Storage 노드그룹 - Kafka 브로커 (기존 storage-on에서 이름 변경)
@@ -172,14 +183,16 @@ module "eks" {
         storage-type  = "ebs"
       }
       
-      # 시스템 파드 스케줄링을 위해 테인트 주석처리
-      # taints = {
-      #   kafka = {
-      #     key    = "workload"
-      #     value  = "kafka"
-      #     effect = "NO_SCHEDULE"
-      #   }
-      # }
+
+      # Kafka 전용 테인트
+      taints = {
+        kafka = {
+          key    = "workload"
+          value  = "kafka"
+          effect = "NO_SCHEDULE"
+        }
+      }
+
     }
     
     # GPU Spot 노드그룹 - LLM 추론 (옵션)

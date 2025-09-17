@@ -1,0 +1,20 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: sink-mongo-realtime-collection
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-connect
+spec:
+  class: com.mongodb.kafka.connect.MongoSinkConnector
+  tasksMax: 2
+  config:
+    topics: realtime-review-collection-topic
+    connection.uri: ${file:/opt/kafka/external-cred/mongo.properties:connection.uri}
+    database: analytics
+    collection: realtime_review_collection
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: "false"
+    document.id.strategy: com.mongodb.kafka.connect.sink.processor.id.strategy.FullKeyStrategy
+    deletes.enabled: "false"

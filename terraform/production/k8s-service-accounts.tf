@@ -53,10 +53,8 @@ resource "kubernetes_namespace" "airflow" {
     }
   }
   
-  depends_on = [
-    module.eks,
-    helm_release.ebs_csi_driver
-  ]
+  depends_on = [module.eks]
+
 }
 
 # Spark 네임스페이스
@@ -72,10 +70,8 @@ resource "kubernetes_namespace" "spark" {
     }
   }
   
-  depends_on = [
-    module.eks,
-    helm_release.ebs_csi_driver
-  ]
+
+  depends_on = [module.eks]
 }
 
 # Jenkins 네임스페이스

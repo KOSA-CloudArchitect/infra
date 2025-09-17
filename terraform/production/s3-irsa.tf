@@ -223,6 +223,63 @@ resource "aws_iam_role" "spark_irsa" {
   }
 }
 
+
+# Airflow Redshift 정책
+resource "aws_iam_policy" "airflow_redshift_policy" {
+  count = var.create_redshift ? 1 : 0
+  
+  name        = "${var.project_name}-airflow-redshift-policy"
+  description = "Policy for Airflow to access Redshift Serverless"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "redshift-serverless:GetWorkgroup",
+          "redshift-serverless:GetNamespace",
+          "redshift-serverless:ListWorkgroups",
+          "redshift-serverless:ListNamespaces",
+          "redshift-serverless:GetCredentials",
+          "redshift-serverless:CreateWorkgroup",
+          "redshift-serverless:UpdateWorkgroup",
+          "redshift-serverless:DeleteWorkgroup",
+          "redshift-serverless:CreateNamespace",
+          "redshift-serverless:UpdateNamespace",
+          "redshift-serverless:DeleteNamespace"
+        ]
+        Resource = [
+          "arn:aws:redshift-serverless:${var.aws_region}:${data.aws_caller_identity.current.account_id}:workgroup/${var.project_name}-redshift-workgroup",
+          "arn:aws:redshift-serverless:${var.aws_region}:${data.aws_caller_identity.current.account_id}:namespace/${var.project_name}-redshift-namespace"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "redshift-serverless:GetTable",
+          "redshift-serverless:ListTables",
+          "redshift-serverless:CreateTable",
+          "redshift-serverless:UpdateTable",
+          "redshift-serverless:DeleteTable",
+          "redshift-serverless:ExecuteStatement",
+          "redshift-serverless:GetStatementResult",
+          "redshift-serverless:ListStatements",
+          "redshift-serverless:CancelStatement"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+  
+  tags = {
+    Name        = "${var.project_name}-airflow-redshift-policy"
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+  }
+}
+
 # Airflow S3 정책
 resource "aws_iam_policy" "airflow_s3_policy" {
   count = var.create_s3_buckets ? 1 : 0
@@ -301,6 +358,14 @@ resource "aws_iam_role_policy_attachment" "airflow_s3_policy_attachment" {
   
   role       = aws_iam_role.airflow_irsa[0].name
   policy_arn = aws_iam_policy.airflow_s3_policy[0].arn
+}
+
+
+resource "aws_iam_role_policy_attachment" "airflow_redshift_policy_attachment" {
+  count = var.create_redshift ? 1 : 0
+  
+  role       = aws_iam_role.airflow_irsa[0].name
+  policy_arn = aws_iam_policy.airflow_redshift_policy[0].arn
 }
 
 resource "aws_iam_role_policy_attachment" "spark_s3_policy_attachment" {

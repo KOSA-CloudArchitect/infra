@@ -97,6 +97,12 @@ deploy_phase1() {
     log_info "VPC 피어링 연결 중..."
     terraform apply -target=aws_vpc_peering_connection.app_to_db -auto-approve
     
+
+    log_info "VPC 라우팅 테이블 업데이트 중..."
+    terraform apply -target=aws_route.app_to_db -auto-approve
+    terraform apply -target=aws_route.db_to_app -auto-approve
+    
+
     log_success "Phase 1 완료: 기본 인프라 배포됨"
 }
 
@@ -106,17 +112,28 @@ deploy_phase2() {
     log_info "IAM 역할 생성 중..."
     terraform apply -target=aws_iam_role.jenkins_role -auto-approve
     terraform apply -target=aws_iam_role.ebs_csi_driver -auto-approve
+
+    terraform apply -target=aws_iam_role.cni_role -auto-approve
+    # terraform apply -target=aws_iam_role.cluster_autoscaler -auto-approve  # 주석처리됨
+
     terraform apply -target=aws_iam_role.airflow_irsa -auto-approve
     terraform apply -target=aws_iam_role.spark_irsa -auto-approve
     
     log_info "IAM 정책 생성 중..."
     terraform apply -target=aws_iam_policy.jenkins_policy -auto-approve
+
+    # terraform apply -target=aws_iam_policy.cluster_autoscaler_policy -auto-approve  # 주석처리됨
+
     terraform apply -target=aws_iam_policy.airflow_s3_policy -auto-approve
     terraform apply -target=aws_iam_policy.spark_s3_policy -auto-approve
     
     log_info "IAM 정책 첨부 중..."
     terraform apply -target=aws_iam_role_policy_attachment.jenkins_policy_attachment -auto-approve
     terraform apply -target=aws_iam_role_policy_attachment.ebs_csi_driver_policy -auto-approve
+
+    terraform apply -target=aws_iam_role_policy_attachment.cni_policy_attachment -auto-approve
+    # terraform apply -target=aws_iam_role_policy_attachment.cluster_autoscaler_policy_attachment -auto-approve  # 주석처리됨
+
     terraform apply -target=aws_iam_role_policy_attachment.airflow_s3_policy_attachment -auto-approve
     terraform apply -target=aws_iam_role_policy_attachment.spark_s3_policy_attachment -auto-approve
     
@@ -170,8 +187,13 @@ deploy_phase5() {
     log_info "EKS 클러스터 생성 중..."
     terraform apply -target=module.eks -auto-approve
     
+
+    log_info "EKS 퍼블릭 액세스 제한 중..."
+    terraform apply -target=null_resource.restrict_eks_public_access -auto-approve
+
     log_info "EBS CSI Driver 설치 중..."
     terraform apply -target=helm_release.ebs_csi_driver -auto-approve
+
     
     log_success "Phase 5 완료: EKS 클러스터 배포됨"
 }
@@ -239,6 +261,11 @@ deploy_phase8() {
 deploy_phase9() {
     log_info "Phase 9: Kubernetes 리소스 배포 시작..."
     
+
+    # terraform.tfvars에서 create_k8s_resources를 true로 변경
+    log_info "terraform.tfvars에서 create_k8s_resources를 true로 변경 중..."
+    sed -i.bak 's/create_k8s_resources = false/create_k8s_resources = true/' terraform.tfvars
+
     # log_warning "terraform.tfvars에서 create_k8s_resources = true로 변경했는지 확인하세요!"
     # read -p "계속하시겠습니까? (y/N): " -n 1 -r
     # echo
@@ -246,11 +273,18 @@ deploy_phase9() {
     #     log_info "Phase 9 건너뜀"
     #     return
     # fi
+
     
     # kubectl 연결 설정
     log_info "kubectl 연결 설정 중..."
     setup_kubectl_connection
     
+
+    # EBS CSI Driver 설치 (kubectl 연결 후)
+    log_info "EBS CSI Driver 설치 중..."
+    terraform apply -target=helm_release.ebs_csi_driver -auto-approve
+    
+
     log_info "Kubernetes 네임스페이스 및 서비스 어카운트 생성 중..."
     terraform apply -target=kubernetes_namespace.airflow -auto-approve
     terraform apply -target=kubernetes_namespace.spark -auto-approve
@@ -318,7 +352,27 @@ main() {
     
     # 배포 정보 출력
     log_info "배포된 리소스 정보:"
+
+    echo ""
+    log_info "=== EKS 클러스터 정보 ==="
+    terraform output eks_cluster_name 2>/dev/null || echo "EKS 클러스터 이름: N/A"
+    terraform output eks_cluster_endpoint 2>/dev/null || echo "EKS 클러스터 엔드포인트: N/A"
+    echo ""
+    log_info "=== Jenkins 정보 ==="
+    terraform output jenkins_alb_dns_name 2>/dev/null || echo "Jenkins ALB DNS: N/A"
+    echo ""
+    log_info "=== RDS 정보 ==="
+    terraform output rds_endpoint 2>/dev/null || echo "RDS 엔드포인트: N/A"
+    echo ""
+    log_info "=== S3 버킷 정보 ==="
+    terraform output airflow_logs_bucket_name 2>/dev/null || echo "Airflow 로그 버킷: N/A"
+    terraform output spark_checkpoints_bucket_name 2>/dev/null || echo "Spark 체크포인트 버킷: N/A"
+    echo ""
+    log_info "=== VPN 정보 ==="
+    terraform output vpn_setup_info 2>/dev/null || echo "VPN 설정 정보: N/A"
+
     terraform output
+
 }
 
 # 스크립트 실행

@@ -28,6 +28,43 @@
 
 ## 🚀 배포 방법
 
+
+### 자동 배포 (권장)
+```bash
+./deploy-eks.sh
+```
+
+### 수동 배포
+1. `terraform.tfvars` 파일을 환경에 맞게 수정
+2. `terraform init` 실행
+3. `terraform plan` 실행하여 변경사항 확인
+4. `terraform apply` 실행하여 인프라 배포
+
+### 단계별 배포 (문제 발생 시)
+```bash
+# 1단계: 기본 인프라
+terraform apply -target=module.vpc_app -auto-approve
+
+# 2단계: IAM 역할
+terraform apply -target=aws_iam_role.ebs_csi_driver -auto-approve
+
+# 3단계: EKS 클러스터
+terraform apply -target=module.eks -auto-approve
+
+# 4단계: kubectl 설정
+aws eks update-kubeconfig --region ap-northeast-2 --name hihypipe-eks-cluster
+
+# 5단계: Helm 차트
+terraform apply -target=helm_release.ebs_csi_driver -auto-approve
+
+# 6단계: Kubernetes 리소스 (선택사항)
+# terraform.tfvars에서 create_k8s_resources = true로 변경 후
+terraform apply -target=kubernetes_namespace.airflow -auto-approve
+
+# 7단계: 전체 배포
+terraform apply -auto-approve
+```
+
 ### 1. **사전 준비**
 ```bash
 # AWS CLI 설정
@@ -230,5 +267,4 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/vpc/flowlogs"
 문제가 발생하면 다음을 확인하세요:
 1. Terraform 상태 파일
 2. AWS CloudTrail 로그
-3. CloudWatch 메트릭
 4. VPC Flow Logs

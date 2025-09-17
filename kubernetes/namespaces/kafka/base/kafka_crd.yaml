@@ -2,6 +2,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
   name: controller
+  namespace: kafka
   labels:
     strimzi.io/cluster: my-cluster
 spec:
@@ -19,39 +20,74 @@ spec:
     type: jbod
     volumes:
       - id: 0
-        type: ephemeral
+        type: persistent-claim
+        size: 20Gi
         kraftMetadata: shared
+  template:
+    pod:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/nodegroup
+                operator: In
+                values:
+                - kafka-storage-on-20250908020539785800000018
+      tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "kafka"
+        effect: "NoSchedule"
 ---
 
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
   name: broker
+  namespace: kafka
   labels:
     strimzi.io/cluster: my-cluster
 spec:
-  replicas: 3
+  replicas: 1
   roles:
     - broker
   resources:
     requests:
       cpu: 500m
-      memory: 512Mi
+      memory: 2Gi
     limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 2Gi
   storage:
     type: jbod
     volumes:
       - id: 0
-        type: ephemeral
-#        kraftMetadata: shared
+        type: persistent-claim
+        size: 20Gi
+  template:
+    pod:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/nodegroup
+                operator: In
+                values:
+                - kafka-storage-on-20250908020539785800000018
+      tolerations:
+      - key: "workload"
+        operator: "Equal"
+        value: "kafka"
+        effect: "NoSchedule"
 ---
 
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: my-cluster
+  namespace: kafka
   annotations:
     strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled
@@ -69,11 +105,9 @@ spec:
         type: internal
         tls: true
     config:
-      offsets.topic.replication.factor: 3
-      transaction.state.log.replication.factor: 3
-      transaction.state.log.min.isr: 2
-      default.replication.factor: 3
-      min.insync.replicas: 2
-  entityOperator:
-    topicOperator: {}
-    userOperator: {}
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  entityOperator: {}

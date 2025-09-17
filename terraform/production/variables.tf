@@ -138,10 +138,11 @@ variable "core_on_node_group" {
     disk_size      = number
   })
   default = {
-    instance_types = ["c7g.medium"]
-    min_size       = 1  # 테스트용 1개
-    max_size       = 3  # 최대 3개까지 확장 가능
-    desired_size   = 1  # 1개로 시작
+    instance_types = ["c6g.large"]
+    min_size       = 3  # 기본 3개
+    max_size       = 5  # 최대 5개까지 확장 가능
+    desired_size   = 3  # 기본 3개
+
     disk_size      = 20
   }
 }
@@ -160,7 +161,9 @@ variable "airflow_core_on_node_group" {
     instance_types = ["c7g.medium"]
     min_size       = 1
     max_size       = 3
-    desired_size   = 1
+
+    desired_size   = 0
+
     disk_size      = 20
   }
 }
@@ -179,7 +182,9 @@ variable "airflow_worker_spot_node_group" {
     instance_types = ["c7g.medium", "m7g.medium"]
     min_size       = 0
     max_size       = 20
+
     desired_size   = 0
+
     disk_size      = 20
   }
 }
@@ -196,9 +201,10 @@ variable "spark_driver_on_node_group" {
   })
   default = {
     instance_types = ["m7g.large"]
-    min_size       = 1
+    min_size       = 0
     max_size       = 2
-    desired_size   = 1
+    desired_size   = 0
+
     disk_size      = 20
   }
 }
@@ -238,9 +244,10 @@ variable "kafka_storage_on_node_group" {
   })
   default = {
     instance_types   = ["c7g.large", "m7g.large"]  # i4g.large 대신 m7g.large 사용
-    min_size         = 1  # 테스트용 1개
+    min_size         = 2  # 기본 2개
     max_size         = 3  # 최대 3개까지 확장 가능
-    desired_size     = 1  # 1개로 시작
+    desired_size     = 2  # 기본 2개
+
     disk_size        = 300
     disk_type        = "gp3"
     disk_iops        = 3000
@@ -266,6 +273,33 @@ variable "gpu_spot_node_group" {
     desired_size   = 0
     disk_size      = 20
   }
+}
+
+
+# LLM 모델 서빙용 고사양 노드그룹
+variable "llm_model_node_group" {
+  description = "High-spec node group for LLM model serving"
+  type = object({
+    instance_types = list(string)
+    min_size       = number
+    max_size       = number
+    desired_size   = number
+    disk_size      = number
+  })
+  default = {
+    instance_types = ["t4g.medium"]
+    min_size       = 0
+    max_size       = 3
+    desired_size   = 1
+    disk_size      = 20
+  }
+}
+
+# 베스천 호스트 접근용 IP 주소
+variable "my_ip_for_bastion" {
+  description = "Your IP address for bastion host access"
+  type        = string
+  default     = "0.0.0.0/32"
 }
 
 # GPU 노드그룹 - AWS GPU 인스턴스 제한으로 인해 주석처리
@@ -346,6 +380,21 @@ variable "vpc_app_private_subnets" {
     "172.20.80.0/20"   # Private AZ-c
   ]
 }
+
+
+# NAT/VPN 비용 제어 플래그
+variable "enable_nat_gateway" {
+  description = "Enable NAT gateway for VPC-APP (costly resource)"
+  type        = bool
+  default     = true
+}
+
+variable "single_nat_gateway" {
+  description = "Use single NAT gateway instead of one per AZ"
+  type        = bool
+  default     = true
+}
+
 
 # =============================================================================
 # On-premises 설정
@@ -551,6 +600,93 @@ variable "s3_log_retention_days" {
 }
 
 # =============================================================================
+
+# Redshift 설정
+# =============================================================================
+
+# Redshift 클러스터 생성 여부
+variable "create_redshift" {
+  description = "Whether to create Redshift cluster"
+  type        = bool
+  default     = false
+}
+
+# S3 원시 데이터 버킷 이름
+variable "s3_raw_data_bucket" {
+  description = "S3 bucket name for raw data"
+  type        = string
+  default     = "hihypipe-raw-data"
+}
+
+
+
+
+# Redshift Serverless 기본 용량 (RPU - Redshift Processing Units)
+variable "redshift_serverless_base_capacity" {
+  description = "Redshift Serverless base capacity in RPU"
+  type        = number
+  default     = 128  # 최소 128 RPU
+}
+
+# Redshift Serverless 최대 용량 (RPU)
+variable "redshift_serverless_max_capacity" {
+  description = "Redshift Serverless max capacity in RPU"
+  type        = number
+  default     = 512  # 최대 512 RPU
+}
+
+# Redshift 데이터베이스 이름
+variable "redshift_database_name" {
+  description = "Redshift database name"
+  type        = string
+  default     = "hihypipe"
+}
+
+# Redshift 마스터 사용자명
+variable "redshift_master_username" {
+  description = "Redshift master username"
+  type        = string
+  default     = "admin"
+}
+
+# Redshift 마스터 비밀번호
+variable "redshift_master_password" {
+  description = "Redshift master password"
+  type        = string
+  sensitive   = true
+  default     = "Redshift123!"
+}
+
+# Redshift 스냅샷 보존 기간
+variable "redshift_snapshot_retention_period" {
+  description = "Redshift snapshot retention period in days"
+  type        = number
+  default     = 7
+}
+
+# Redshift 유지보수 윈도우
+variable "redshift_maintenance_window" {
+  description = "Redshift maintenance window"
+  type        = string
+  default     = "sun:04:00-sun:05:00"
+}
+
+# Redshift 암호화 여부
+variable "redshift_encrypted" {
+  description = "Redshift encryption"
+  type        = bool
+  default     = true
+}
+
+# Redshift KMS 키 ID
+variable "redshift_kms_key_id" {
+  description = "Redshift KMS key ID"
+  type        = string
+  default     = ""
+}
+
+# =============================================================================
+
 # Kubernetes 리소스 설정
 # =============================================================================
 
@@ -558,7 +694,8 @@ variable "s3_log_retention_days" {
 variable "create_k8s_resources" {
   description = "Whether to create Kubernetes resources (namespaces, service accounts)"
   type        = bool
-  default     = true  # 기본적으로 비활성화 (별도 배포)
+  default     = false  # 기본적으로 비활성화 (EKS 클러스터 생성 후 별도 배포)
+
 }
 
 # =============================================================================

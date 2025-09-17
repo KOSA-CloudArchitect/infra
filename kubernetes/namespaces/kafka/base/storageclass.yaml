@@ -1,0 +1,31 @@
+# Kafka용 StorageClass 설정
+# WaitForFirstConsumer 모드로 Pod 스케줄링 시점에 EBS 볼륨 생성
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-wait
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+---
+# 기존 gp2 StorageClass 비활성화
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp2-disabled
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: false
+reclaimPolicy: Delete

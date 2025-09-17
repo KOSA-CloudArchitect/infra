@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: my-connect
+  namespace: kafka
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  version: 3.9.0
+  replicas: 1
+  bootstrapServers: my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+  image: hahxowns/kafka-connect-s3:10.6.5
+  config:
+    group.id: my-connect-cluster
+    config.storage.topic: my-connect-configs
+    offset.storage.topic: my-connect-offsets
+    status.storage.topic: my-connect-status
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: "false"
+  template:
+    pod:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/nodegroup
+                operator: In
+                values:
+                - kafka-storage-on-20250908020539785800000018
+      tolerations:
+      - key: workload
+        operator: Equal
+        value: "kafka"
+        effect: NoSchedule

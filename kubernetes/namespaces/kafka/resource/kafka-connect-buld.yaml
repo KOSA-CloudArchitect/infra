@@ -1,0 +1,37 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: my-connect
+  namespace: kafka
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  version: 3.9.0
+  replicas: 1
+  bootstrapServers: my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+  config:
+    group.id: my-connect-cluster
+    config.storage.topic: my-connect-configs
+    offset.storage.topic: my-connect-offsets
+    status.storage.topic: my-connect-status
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    key.converter: org.apache.kafka.connect.storage.StringConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter.schemas.enable: "false"
+  build:
+    output:
+      type: docker
+      image: hahxowns/kafka-connect-s3:10.6.5
+      pushSecret: dockerhub-secret
+    plugins:
+      - name: confluent-s3-sink
+        artifacts:
+          - type: maven
+            repository: https://packages.confluent.io/maven/
+            group: io.confluent
+            artifact: kafka-connect-s3
+            version: 10.6.5
