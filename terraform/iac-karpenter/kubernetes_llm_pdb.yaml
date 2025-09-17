@@ -1,0 +1,31 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: llm-model-pdb
+  namespace: default
+  labels:
+    app: llm-model
+    workload: llm-model
+spec:
+  # Ensure at least 1 pod is always available
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: llm-model
+---
+# Alternative PDB configuration (choose one)
+# apiVersion: policy/v1
+# kind: PodDisruptionBudget
+# metadata:
+#   name: llm-model-pdb-max-unavailable
+#   namespace: default
+#   labels:
+#     app: llm-model
+#     workload: llm-model
+# spec:
+#   # Allow maximum 1 pod to be unavailable
+#   maxUnavailable: 1
+#   selector:
+#     matchLabels:
+#       app: llm-model
+

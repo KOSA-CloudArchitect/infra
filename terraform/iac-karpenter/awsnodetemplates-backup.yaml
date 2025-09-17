@@ -1,0 +1,72 @@
+apiVersion: v1
+items:
+- apiVersion: karpenter.k8s.aws/v1alpha1
+  kind: AWSNodeTemplate
+  metadata:
+    creationTimestamp: "2025-09-11T14:40:26Z"
+    generation: 1
+    name: core-arm-ondemand
+    resourceVersion: "1679703"
+    uid: 9ce56faf-2449-42cd-98db-0803b4098a34
+  spec:
+    amiFamily: AL2
+    blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        encrypted: true
+        iops: 3000
+        throughput: 125
+        volumeSize: 100Gi
+        volumeType: gp3
+    instanceProfile: KarpenterNodeInstanceProfile-hihypipe-eks-cluster
+    securityGroupSelector:
+      aws:eks:cluster-name: hihypipe-eks-cluster
+    subnetSelector:
+      karpenter.sh/discovery: hihypipe-eks-cluster
+    tags:
+      Name: karpenter-core-node
+      NodeType: core-workload
+      karpenter.sh/discovery: hihypipe-eks-cluster
+      workload: core
+    userData: IyEvYmluL2Jhc2gKL2V0Yy9la3MvYm9vdHN0cmFwLnNoIGhpaHlwaXBlLWVrcy1jbHVzdGVyCg==
+- apiVersion: karpenter.k8s.aws/v1alpha1
+  kind: AWSNodeTemplate
+  metadata:
+    creationTimestamp: "2025-09-11T08:11:53Z"
+    generation: 1
+    labels:
+      karpenter.sh/discovery: hihypipe-eks-cluster
+    name: llm-arm-ondemand
+    resourceVersion: "1510512"
+    uid: e420d09f-533a-470b-a7f0-5c5efbcc5ca9
+  spec:
+    amiFamily: AL2
+    amiSelector:
+      karpenter.k8s.aws/ami-id: ami-02b221113b5ddb64d
+    blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        deleteOnTermination: true
+        encrypted: true
+        iops: 3000
+        throughput: 125
+        volumeSize: 100Gi
+        volumeType: gp3
+    instanceProfile: KarpenterNodeInstanceProfile-hihypipe-eks-cluster
+    securityGroupSelector:
+      aws:eks:cluster-name: hihypipe-eks-cluster
+    subnetSelector:
+      Name: hihypipe-vpc-app-private-*
+      karpenter.sh/discovery: hihypipe-eks-cluster
+    tags:
+      Environment: production
+      Project: karpenter-llm
+      Workload: llm
+      karpenter.sh/discovery: hihypipe-eks-cluster
+      kubernetes.io/cluster/hihypipe-eks-cluster: owned
+      node-type: llm-arm-ondemand
+      workload: llm
+    userData: IyEvYmluL2Jhc2gKL2V0Yy9la3MvYm9vdHN0cmFwLnNoIGhpaHlwaXBlLWVrcy1jbHVzdGVyCg==
+kind: List
+metadata:
+  resourceVersion: ""
