@@ -156,57 +156,6 @@ resource "aws_s3_bucket_public_access_block" "spark_checkpoints_pab" {
 }
 
 # =============================================================================
-# Raw Data S3 Bucket for Kafka Connect (No random suffix)
-# =============================================================================
-
-resource "aws_s3_bucket" "raw_data" {
-  count = var.create_s3_buckets ? 1 : 0
-
-  bucket = "hihypipe-raw-data"
-
-  tags = {
-    Name        = "${var.project_name}-raw-data"
-    Environment = var.environment
-    Owner       = var.owner
-    CostCenter  = var.cost_center
-    Purpose     = "Kafka Connect Raw Data"
-  }
-}
-
-resource "aws_s3_bucket_versioning" "raw_data_versioning" {
-  count = var.create_s3_buckets && var.s3_bucket_versioning ? 1 : 0
-
-  bucket = aws_s3_bucket.raw_data[0].id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "raw_data_encryption" {
-  count = var.create_s3_buckets && var.s3_bucket_encryption ? 1 : 0
-
-  bucket = aws_s3_bucket.raw_data[0].id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-    bucket_key_enabled = true
-  }
-}
-
-resource "aws_s3_bucket_public_access_block" "raw_data_pab" {
-  count = var.create_s3_buckets ? 1 : 0
-
-  bucket = aws_s3_bucket.raw_data[0].id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-# =============================================================================
 # IRSA Service Accounts for Airflow and Spark
 # =============================================================================
 
@@ -271,6 +220,62 @@ resource "aws_iam_role" "spark_irsa" {
     Owner       = var.owner
     CostCenter  = var.cost_center
     Purpose     = "Spark S3 Access"
+  }
+}
+
+# Airflow Redshift 정책
+resource "aws_iam_policy" "airflow_redshift_policy" {
+  count = var.create_redshift ? 1 : 0
+  
+  name        = "${var.project_name}-airflow-redshift-policy"
+  description = "Policy for Airflow to access Redshift Serverless"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "redshift-serverless:GetWorkgroup",
+          "redshift-serverless:GetNamespace",
+          "redshift-serverless:ListWorkgroups",
+          "redshift-serverless:ListNamespaces",
+          "redshift-serverless:GetCredentials",
+          "redshift-serverless:CreateWorkgroup",
+          "redshift-serverless:UpdateWorkgroup",
+          "redshift-serverless:DeleteWorkgroup",
+          "redshift-serverless:CreateNamespace",
+          "redshift-serverless:UpdateNamespace",
+          "redshift-serverless:DeleteNamespace"
+        ]
+        Resource = [
+          "arn:aws:redshift-serverless:${var.aws_region}:${data.aws_caller_identity.current.account_id}:workgroup/${var.project_name}-redshift-workgroup",
+          "arn:aws:redshift-serverless:${var.aws_region}:${data.aws_caller_identity.current.account_id}:namespace/${var.project_name}-redshift-namespace"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "redshift-serverless:GetTable",
+          "redshift-serverless:ListTables",
+          "redshift-serverless:CreateTable",
+          "redshift-serverless:UpdateTable",
+          "redshift-serverless:DeleteTable",
+          "redshift-serverless:ExecuteStatement",
+          "redshift-serverless:GetStatementResult",
+          "redshift-serverless:ListStatements",
+          "redshift-serverless:CancelStatement"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+  
+  tags = {
+    Name        = "${var.project_name}-airflow-redshift-policy"
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
   }
 }
 
@@ -354,84 +359,16 @@ resource "aws_iam_role_policy_attachment" "airflow_s3_policy_attachment" {
   policy_arn = aws_iam_policy.airflow_s3_policy[0].arn
 }
 
+resource "aws_iam_role_policy_attachment" "airflow_redshift_policy_attachment" {
+  count = var.create_redshift ? 1 : 0
+  
+  role       = aws_iam_role.airflow_irsa[0].name
+  policy_arn = aws_iam_policy.airflow_redshift_policy[0].arn
+}
+
 resource "aws_iam_role_policy_attachment" "spark_s3_policy_attachment" {
   count = var.create_s3_buckets ? 1 : 0
   
   role       = aws_iam_role.spark_irsa[0].name
   policy_arn = aws_iam_policy.spark_s3_policy[0].arn
-}
-
-# =============================================================================
-# IRSA for Kafka Connect to write to Raw Data S3 bucket
-# =============================================================================
-
-resource "aws_iam_role" "kafka_connect_irsa" {
-  count = var.create_s3_buckets ? 1 : 0
-
-  name = "${var.project_name}-kafka-connect-irsa"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRoleWithWebIdentity"
-      Effect = "Allow"
-      Principal = {
-        Federated = var.create_eks_cluster ? module.eks[0].oidc_provider_arn : null
-      }
-      Condition = {
-        StringEquals = {
-          "${var.create_eks_cluster ? module.eks[0].oidc_provider : ""}:sub" = "system:serviceaccount:kafka:my-connect-connect"
-          "${var.create_eks_cluster ? module.eks[0].oidc_provider : ""}:aud" = "sts.amazonaws.com"
-        }
-      }
-    }]
-  })
-
-  tags = {
-    Name        = "${var.project_name}-kafka-connect-irsa"
-    Environment = var.environment
-    Owner       = var.owner
-    CostCenter  = var.cost_center
-    Purpose     = "Kafka Connect S3 Access"
-  }
-}
-
-resource "aws_iam_policy" "kafka_connect_s3_policy" {
-  count = var.create_s3_buckets ? 1 : 0
-
-  name        = "${var.project_name}-kafka-connect-s3-policy"
-  description = "Policy for Kafka Connect to write raw data to S3"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket"
-        ]
-        Resource = [
-          aws_s3_bucket.raw_data[0].arn
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = [
-          "${aws_s3_bucket.raw_data[0].arn}/*"
-        ]
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "kafka_connect_s3_policy_attachment" {
-  count = var.create_s3_buckets ? 1 : 0
-
-  role       = aws_iam_role.kafka_connect_irsa[0].name
-  policy_arn = aws_iam_policy.kafka_connect_s3_policy[0].arn
 }

@@ -158,7 +158,7 @@ variable "airflow_core_on_node_group" {
   })
   default = {
     instance_types = ["c7g.medium"]
-    min_size       = 0
+    min_size       = 1
     max_size       = 3
     desired_size   = 0
     disk_size      = 20
@@ -179,7 +179,7 @@ variable "airflow_worker_spot_node_group" {
     instance_types = ["c7g.medium", "m7g.medium"]
     min_size       = 0
     max_size       = 20
-    desired_size   = 0
+    desired_size   = 1
     disk_size      = 20
   }
 }
@@ -587,6 +587,91 @@ variable "s3_log_retention_days" {
   description = "S3 log retention period in days"
   type        = number
   default     = 30
+}
+
+# =============================================================================
+# Redshift 설정
+# =============================================================================
+
+# Redshift 클러스터 생성 여부
+variable "create_redshift" {
+  description = "Whether to create Redshift cluster"
+  type        = bool
+  default     = false
+}
+
+# S3 원시 데이터 버킷 이름
+variable "s3_raw_data_bucket" {
+  description = "S3 bucket name for raw data"
+  type        = string
+  default     = "hihypipe-raw-data"
+}
+
+
+
+
+# Redshift Serverless 기본 용량 (RPU - Redshift Processing Units)
+variable "redshift_serverless_base_capacity" {
+  description = "Redshift Serverless base capacity in RPU"
+  type        = number
+  default     = 128  # 최소 128 RPU
+}
+
+# Redshift Serverless 최대 용량 (RPU)
+variable "redshift_serverless_max_capacity" {
+  description = "Redshift Serverless max capacity in RPU"
+  type        = number
+  default     = 512  # 최대 512 RPU
+}
+
+# Redshift 데이터베이스 이름
+variable "redshift_database_name" {
+  description = "Redshift database name"
+  type        = string
+  default     = "hihypipe"
+}
+
+# Redshift 마스터 사용자명
+variable "redshift_master_username" {
+  description = "Redshift master username"
+  type        = string
+  default     = "admin"
+}
+
+# Redshift 마스터 비밀번호
+variable "redshift_master_password" {
+  description = "Redshift master password"
+  type        = string
+  sensitive   = true
+  default     = "Redshift123!"
+}
+
+# Redshift 스냅샷 보존 기간
+variable "redshift_snapshot_retention_period" {
+  description = "Redshift snapshot retention period in days"
+  type        = number
+  default     = 7
+}
+
+# Redshift 유지보수 윈도우
+variable "redshift_maintenance_window" {
+  description = "Redshift maintenance window"
+  type        = string
+  default     = "sun:04:00-sun:05:00"
+}
+
+# Redshift 암호화 여부
+variable "redshift_encrypted" {
+  description = "Redshift encryption"
+  type        = bool
+  default     = true
+}
+
+# Redshift KMS 키 ID
+variable "redshift_kms_key_id" {
+  description = "Redshift KMS key ID"
+  type        = string
+  default     = ""
 }
 
 # =============================================================================
