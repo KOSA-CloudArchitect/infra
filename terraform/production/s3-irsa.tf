@@ -223,6 +223,7 @@ resource "aws_iam_role" "spark_irsa" {
   }
 }
 
+
 # Airflow Redshift 정책
 resource "aws_iam_policy" "airflow_redshift_policy" {
   count = var.create_redshift ? 1 : 0
@@ -358,6 +359,7 @@ resource "aws_iam_role_policy_attachment" "airflow_s3_policy_attachment" {
   role       = aws_iam_role.airflow_irsa[0].name
   policy_arn = aws_iam_policy.airflow_s3_policy[0].arn
 }
+
 
 resource "aws_iam_role_policy_attachment" "airflow_redshift_policy_attachment" {
   count = var.create_redshift ? 1 : 0

@@ -1,0 +1,17 @@
+# kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- 01-backend-deployment.yaml
+
+images:
+- name: backend-placeholder
+  newName: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
+  newTag: a56027a
+
+patches:
+- path: patch-imagepullsecret.yaml
+  target:
+    kind: Deployment
+    name: backend-deployment

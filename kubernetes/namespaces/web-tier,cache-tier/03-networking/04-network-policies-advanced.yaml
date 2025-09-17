@@ -1,0 +1,304 @@
+# EKS Migration - Network Policies
+# Task 5.2: 네임스페이스 간 통신 제어 및 보안 강화
+
+---
+# Network Policy for web-tier namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-tier-network-policy
+  namespace: web-tier
+  labels:
+    app.kubernetes.io/name: web-tier-network-policy
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: security
+spec:
+  podSelector: {}  # 네임스페이스 내 모든 Pod에 적용
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # ALB/Ingress Controller로부터의 트래픽 허용
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 3000  # Frontend
+    - protocol: TCP
+      port: 3001  # Backend API
+    - protocol: TCP
+      port: 3002  # WebSocket
+  
+  # web-tier 네임스페이스 내부 Pod 간 통신 허용
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: web-tier
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 3001
+    - protocol: TCP
+      port: 3002
+  
+  # 모니터링 네임스페이스에서 메트릭 수집 허용
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090  # Prometheus metrics endpoint
+  
+  egress:
+  # cache-tier (Redis)로의 연결 허용
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: cache-tier
+    ports:
+    - protocol: TCP
+      port: 6379  # Redis
+  
+  # 외부 서비스 연결 허용
+  - to: []  # 모든 외부 대상 허용
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 8000  # 로컬 크롤링 서버
+    - protocol: TCP
+      port: 9092  # Kafka
+    - protocol: TCP
+      port: 443   # HTTPS
+    - protocol: TCP
+      port: 80    # HTTP
+  
+  # DNS 해석 허용
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Network Policy for cache-tier namespace (Redis)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cache-tier-network-policy
+  namespace: cache-tier
+  labels:
+    app.kubernetes.io/name: cache-tier-network-policy
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: security
+spec:
+  podSelector: {}  # 네임스페이스 내 모든 Pod에 적용
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # web-tier에서 Redis 접근 허용
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: web-tier
+    ports:
+    - protocol: TCP
+      port: 6379  # Redis
+  
+  # cache-tier 네임스페이스 내부 Pod 간 통신 허용 (Redis 클러스터)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: cache-tier
+    ports:
+    - protocol: TCP
+      port: 6379   # Redis
+    - protocol: TCP
+      port: 16379  # Redis cluster bus
+  
+  # 모니터링 네임스페이스에서 Redis 메트릭 수집 허용
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9121  # Redis exporter
+  
+  egress:
+  # cache-tier 내부 Pod 간 통신 허용 (Redis 클러스터 복제)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: cache-tier
+    ports:
+    - protocol: TCP
+      port: 6379
+    - protocol: TCP
+      port: 16379
+  
+  # DNS 해석 허용
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Network Policy for monitoring namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: monitoring-network-policy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: monitoring-network-policy
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: security
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # ALB/Ingress Controller로부터의 내부 모니터링 접근 허용
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 3000  # 모니터링 대시보드
+    - protocol: TCP
+      port: 9090  # Prometheus
+  
+  # 모니터링 네임스페이스 내부 통신 허용
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 9090
+    - protocol: TCP
+      port: 9121
+  
+  egress:
+  # web-tier 메트릭 수집 허용
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: web-tier
+    ports:
+    - protocol: TCP
+      port: 9090  # 애플리케이션 메트릭
+  
+  # cache-tier 메트릭 수집 허용
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: cache-tier
+    ports:
+    - protocol: TCP
+      port: 9121  # Redis exporter
+  
+  # Kubernetes API 서버 접근 허용 (메트릭 수집)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  
+  # DNS 해석 허용
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Restrictive Network Policy for kube-system (선택적 적용)
+# 주의: 이 정책은 시스템 컴포넌트에 영향을 줄 수 있으므로 신중하게 적용
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kube-system-ingress-controller-policy
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kube-system-ingress-policy
+    app.kubernetes.io/part-of: review-analysis-system
+    app.kubernetes.io/component: security
+spec:
+  # AWS Load Balancer Controller Pod만 대상으로 제한
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: aws-load-balancer-controller
+  policyTypes:
+  - Egress
+  
+  egress:
+  # web-tier로의 트래픽 전달 허용
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: web-tier
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 3001
+    - protocol: TCP
+      port: 3002
+  
+  # monitoring으로의 트래픽 전달 허용
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 3000
+    - protocol: TCP
+      port: 9090
+  
+  # AWS API 호출 허용 (ALB 관리)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  
+  # DNS 해석 허용
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Default deny-all policy template (주석 처리됨)
+# 필요시 활성화하여 기본적으로 모든 트래픽을 차단하고 명시적으로 허용된 트래픽만 통과
+# 
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: default-deny-all
+#   namespace: web-tier
+# spec:
+#   podSelector: {}
+#   policyTypes:
+#   - Ingress
+#   - Egress
+#   # 빈 ingress/egress 규칙 = 모든 트래픽 차단

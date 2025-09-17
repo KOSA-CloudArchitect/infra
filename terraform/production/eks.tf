@@ -122,6 +122,7 @@ module "eks" {
         capacity-type = "on-demand"
       }
       
+
       # Spark Driver 전용 테인트
       taints = {
         spark_driver = {
@@ -130,6 +131,7 @@ module "eks" {
           effect = "NO_SCHEDULE"
         }
       }
+
     }
     
     # Spark Executor Spot 노드그룹 - Executors
@@ -147,6 +149,7 @@ module "eks" {
         capacity-type = "spot"
       }
       
+
       # Spark Executor 전용 테인트
       taints = {
         spark_executor = {
@@ -155,6 +158,7 @@ module "eks" {
           effect = "NO_SCHEDULE"
         }
       }
+
     }
     
     # Kafka Storage 노드그룹 - Kafka 브로커 (기존 storage-on에서 이름 변경)
@@ -179,6 +183,7 @@ module "eks" {
         storage-type  = "ebs"
       }
       
+
       # Kafka 전용 테인트
       taints = {
         kafka = {
@@ -187,6 +192,7 @@ module "eks" {
           effect = "NO_SCHEDULE"
         }
       }
+
     }
     
     # GPU Spot 노드그룹 - LLM 추론 (옵션)

@@ -1,3 +1,4 @@
+
 # 비용 절감 모드 예시 (돈 되는 것만 삭제)
 # - VPC(App, DB)는 유지
 # - NAT, VPN, EKS, Jenkins, RDS, S3 등 비용 리소스는 비활성화 가능
@@ -16,6 +17,7 @@ create_s3_buckets      = false
 
 # Kubernetes 리소스 (EKS 비활성화 시 false 유지)
 create_k8s_resources   = false
+
 # =============================================================================
 # Production Environment Configuration
 # =============================================================================

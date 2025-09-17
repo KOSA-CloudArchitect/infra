@@ -1,0 +1,283 @@
+# Redis Monitoring Configuration
+# Task 4.2: Redis Service 및 헬스체크 설정 - 모니터링 및 헬스체크
+
+---
+# Redis Exporter Deployment (Prometheus 메트릭 수집)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter
+  namespace: cache-tier
+  labels:
+    app: redis-exporter
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/part-of: review-analysis-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-exporter
+  template:
+    metadata:
+      labels:
+        app: redis-exporter
+        app.kubernetes.io/name: redis-exporter
+        app.kubernetes.io/part-of: review-analysis-system
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: redis-exporter
+        image: oliver006/redis_exporter:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 9121
+          protocol: TCP
+        env:
+        - name: REDIS_ADDR
+          value: "redis://redis-service.cache-tier.svc.cluster.local:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: redis-password
+        - name: REDIS_EXPORTER_LOG_FORMAT
+          value: "json"
+        - name: REDIS_EXPORTER_DEBUG
+          value: "false"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 9121
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 9121
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+---
+# Redis Exporter Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-exporter
+  namespace: cache-tier
+  labels:
+    app: redis-exporter
+    app.kubernetes.io/name: redis-exporter
+    app.kubernetes.io/part-of: review-analysis-system
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9121"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: 9121
+    targetPort: 9121
+    protocol: TCP
+  selector:
+    app: redis-exporter
+
+---
+# ServiceMonitor for Prometheus (Prometheus Operator 사용 시)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-monitor
+  namespace: cache-tier
+  labels:
+    app: redis
+    monitoring: prometheus
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/part-of: review-analysis-system
+spec:
+  selector:
+    matchLabels:
+      app: redis-exporter
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+    - cache-tier
+
+---
+# Redis Health Check CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redis-health-check
+  namespace: cache-tier
+  labels:
+    app: redis
+    component: health-check
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: health-check
+    app.kubernetes.io/part-of: review-analysis-system
+spec:
+  schedule: "*/5 * * * *"  # 5분마다 실행
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: redis
+            component: health-check
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: redis-health-check
+            image: redis:7-alpine
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "🔍 Redis 헬스체크 시작..."
+              
+              # Master 헬스체크
+              echo "📊 Master 상태 확인..."
+              MASTER_STATUS=$(redis-cli -h redis-master-0.redis-master.cache-tier.svc.cluster.local -p 6379 -a $REDIS_PASSWORD ping)
+              if [ "$MASTER_STATUS" = "PONG" ]; then
+                echo "✅ Master 정상"
+              else
+                echo "❌ Master 비정상: $MASTER_STATUS"
+                exit 1
+              fi
+              
+              # Slave 헬스체크
+              echo "📊 Slave 상태 확인..."
+              for i in 0 1; do
+                SLAVE_STATUS=$(redis-cli -h redis-slave-$i.redis-slave.cache-tier.svc.cluster.local -p 6379 -a $REDIS_PASSWORD ping)
+                if [ "$SLAVE_STATUS" = "PONG" ]; then
+                  echo "✅ Slave-$i 정상"
+                else
+                  echo "❌ Slave-$i 비정상: $SLAVE_STATUS"
+                fi
+              done
+              
+              # 복제 상태 확인
+              echo "📊 복제 상태 확인..."
+              REPLICATION_INFO=$(redis-cli -h redis-master-0.redis-master.cache-tier.svc.cluster.local -p 6379 -a $REDIS_PASSWORD info replication)
+              echo "$REPLICATION_INFO"
+              
+              # 메모리 사용량 확인
+              echo "📊 메모리 사용량 확인..."
+              MEMORY_INFO=$(redis-cli -h redis-master-0.redis-master.cache-tier.svc.cluster.local -p 6379 -a $REDIS_PASSWORD info memory | grep used_memory_human)
+              echo "$MEMORY_INFO"
+              
+              echo "✅ Redis 헬스체크 완료"
+            env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: redis-password
+            resources:
+              requests:
+                memory: "32Mi"
+                cpu: "50m"
+              limits:
+                memory: "64Mi"
+                cpu: "100m"
+
+---
+# Redis Backup CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redis-backup
+  namespace: cache-tier
+  labels:
+    app: redis
+    component: backup
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: review-analysis-system
+spec:
+  schedule: "0 2 * * *"  # 매일 새벽 2시 백업
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: redis
+            component: backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: redis-backup
+            image: redis:7-alpine
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - /scripts/backup.sh
+            env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: redis-password
+            volumeMounts:
+            - name: redis-scripts
+              mountPath: /scripts
+              defaultMode: 0755
+            - name: backup-storage
+              mountPath: /backup
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "100m"
+              limits:
+                memory: "128Mi"
+                cpu: "200m"
+          volumes:
+          - name: redis-scripts
+            configMap:
+              name: redis-scripts
+              defaultMode: 0755
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: redis-backup-pvc
+
+---
+# Redis Backup PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-backup-pvc
+  namespace: cache-tier
+  labels:
+    app: redis
+    component: backup
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: review-analysis-system
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 20Gi  # 백업 파일 저장용

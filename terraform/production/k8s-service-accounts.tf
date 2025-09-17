@@ -54,6 +54,7 @@ resource "kubernetes_namespace" "airflow" {
   }
   
   depends_on = [module.eks]
+
 }
 
 # Spark 네임스페이스
@@ -69,5 +70,45 @@ resource "kubernetes_namespace" "spark" {
     }
   }
   
+
   depends_on = [module.eks]
+}
+
+# Jenkins 네임스페이스
+resource "kubernetes_namespace" "jenkins" {
+  count = var.create_jenkins_server ? 1 : 0
+  
+  metadata {
+    name = "jenkins"
+    labels = {
+      name = "jenkins"
+      environment = var.environment
+      project = var.project_name
+    }
+  }
+  
+  depends_on = [
+    module.eks,
+    helm_release.ebs_csi_driver
+  ]
+}
+
+# Jenkins Agent 서비스 계정
+resource "kubernetes_service_account" "jenkins_agent" {
+  count = var.create_jenkins_server ? 1 : 0
+  
+  metadata {
+    name      = "jenkins-agent"
+    namespace = kubernetes_namespace.jenkins[0].metadata[0].name
+    annotations = {
+      # iam.tf에서 만든 Agent용 IAM 역할의 ARN을 연결
+      "eks.amazonaws.com/role-arn" = aws_iam_role.jenkins_agent_role[0].arn
+    }
+  }
+  
+  depends_on = [
+    module.eks,
+    kubernetes_namespace.jenkins,
+    aws_iam_role.jenkins_agent_role
+  ]
 }

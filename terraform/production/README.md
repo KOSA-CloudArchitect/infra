@@ -28,6 +28,7 @@
 
 ## 🚀 배포 방법
 
+
 ### 자동 배포 (권장)
 ```bash
 ./deploy-eks.sh
@@ -266,5 +267,4 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/vpc/flowlogs"
 문제가 발생하면 다음을 확인하세요:
 1. Terraform 상태 파일
 2. AWS CloudTrail 로그
-3. ~~CloudWatch 메트릭~~ (비활성화됨)
 4. VPC Flow Logs

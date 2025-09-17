@@ -142,6 +142,7 @@ variable "core_on_node_group" {
     min_size       = 3  # 기본 3개
     max_size       = 5  # 최대 5개까지 확장 가능
     desired_size   = 3  # 기본 3개
+
     disk_size      = 20
   }
 }
@@ -160,7 +161,9 @@ variable "airflow_core_on_node_group" {
     instance_types = ["c7g.medium"]
     min_size       = 1
     max_size       = 3
+
     desired_size   = 0
+
     disk_size      = 20
   }
 }
@@ -179,7 +182,9 @@ variable "airflow_worker_spot_node_group" {
     instance_types = ["c7g.medium", "m7g.medium"]
     min_size       = 0
     max_size       = 20
-    desired_size   = 1
+
+    desired_size   = 0
+
     disk_size      = 20
   }
 }
@@ -199,6 +204,7 @@ variable "spark_driver_on_node_group" {
     min_size       = 0
     max_size       = 2
     desired_size   = 0
+
     disk_size      = 20
   }
 }
@@ -241,6 +247,7 @@ variable "kafka_storage_on_node_group" {
     min_size         = 2  # 기본 2개
     max_size         = 3  # 최대 3개까지 확장 가능
     desired_size     = 2  # 기본 2개
+
     disk_size        = 300
     disk_type        = "gp3"
     disk_iops        = 3000
@@ -267,6 +274,7 @@ variable "gpu_spot_node_group" {
     disk_size      = 20
   }
 }
+
 
 # LLM 모델 서빙용 고사양 노드그룹
 variable "llm_model_node_group" {
@@ -373,6 +381,7 @@ variable "vpc_app_private_subnets" {
   ]
 }
 
+
 # NAT/VPN 비용 제어 플래그
 variable "enable_nat_gateway" {
   description = "Enable NAT gateway for VPC-APP (costly resource)"
@@ -385,6 +394,7 @@ variable "single_nat_gateway" {
   type        = bool
   default     = true
 }
+
 
 # =============================================================================
 # On-premises 설정
@@ -590,6 +600,7 @@ variable "s3_log_retention_days" {
 }
 
 # =============================================================================
+
 # Redshift 설정
 # =============================================================================
 
@@ -675,6 +686,7 @@ variable "redshift_kms_key_id" {
 }
 
 # =============================================================================
+
 # Kubernetes 리소스 설정
 # =============================================================================
 
@@ -683,6 +695,7 @@ variable "create_k8s_resources" {
   description = "Whether to create Kubernetes resources (namespaces, service accounts)"
   type        = bool
   default     = false  # 기본적으로 비활성화 (EKS 클러스터 생성 후 별도 배포)
+
 }
 
 # =============================================================================

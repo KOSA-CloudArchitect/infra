@@ -1,0 +1,122 @@
+# Redis Services
+# Task 4.2: Redis Service 및 헬스체크 설정 - 클러스터 접근을 위한 Service 생성
+
+---
+# Redis Master Service (쓰기 전용)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  namespace: cache-tier
+  labels:
+    app: redis
+    component: master
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: master
+    app.kubernetes.io/part-of: review-analysis-system
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "6379"
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  selector:
+    app: redis
+    component: master
+  sessionAffinity: None
+
+---
+# Redis Slave Service (읽기 전용)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-slave
+  namespace: cache-tier
+  labels:
+    app: redis
+    component: slave
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: slave
+    app.kubernetes.io/part-of: review-analysis-system
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "6379"
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  selector:
+    app: redis
+    component: slave
+  sessionAffinity: None
+
+---
+# Redis 통합 Service (기존 redisService.js와 호환)
+# 이 서비스는 기존 백엔드 코드가 단일 엔드포인트로 접근할 수 있도록 제공
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: cache-tier
+  labels:
+    app: redis
+    component: unified
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: unified
+    app.kubernetes.io/part-of: review-analysis-system
+  annotations:
+    # 기존 redisService.js 호환성을 위한 주석
+    service.description: "Unified Redis service for backward compatibility"
+    service.usage: "Use redis-master for writes, redis-slave for reads"
+spec:
+  type: ClusterIP
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  # 기본적으로 Master로 라우팅 (쓰기 작업 우선)
+  selector:
+    app: redis
+    component: master
+  sessionAffinity: ClientIP  # 세션 유지로 일관성 보장
+
+---
+# Redis 읽기 전용 Service (성능 최적화)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-readonly
+  namespace: cache-tier
+  labels:
+    app: redis
+    component: readonly
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: readonly
+    app.kubernetes.io/part-of: review-analysis-system
+  annotations:
+    service.description: "Read-only Redis service for load balancing across slaves"
+spec:
+  type: ClusterIP
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  # Slave 인스턴스들로 로드 밸런싱
+  selector:
+    app: redis
+    component: slave
+  sessionAffinity: None  # 읽기 작업은 로드 밸런싱 우선
+

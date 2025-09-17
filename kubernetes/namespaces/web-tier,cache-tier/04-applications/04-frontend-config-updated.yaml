@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-env
+  namespace: web-tier
+data:
+  env.js: |
+    (function () {
+      var protoWS = (location.protocol === "https:") ? "wss://" : "ws://";
+
+      // 1) 끝 슬래시 없는 ORIGIN 확보
+      var ORIGIN = String(location.origin || "").replace(/\/+$/, "");
+
+      // 2) 런타임 설정 주입
+      window.__RUNTIME_CONFIG__ = {
+        API_BASE_URL: ORIGIN, // ← 끝 슬래시 없음! (여기에 '/api' 안 붙임)
+        WS_URL: protoWS + location.host + "/ws"
+      };
+    })();
+
+    (function () {
+      // === 3) 전역 URL 정규화 가드 (fetch/axios 모두 커버) ===
+
+      // 안전한 정규식 생성을 위해 ORIGIN을 다시 가져와 이스케이프
+      var ORIGIN = window.__RUNTIME_CONFIG__ && window.__RUNTIME_CONFIG__.API_BASE_URL || (location.origin || "");
+      ORIGIN = String(ORIGIN).replace(/\/+$/, "");
+      function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+      var reOriginNoSlashBeforeApi = new RegExp("^" + escRe(ORIGIN) + "api\\/"); // 예: https://hostapi/.. -> https://host/api/..
+
+      var _fetch = window.fetch;
+
+      function normalizeUrl(u) {
+        try {
+          var url = (u instanceof Request) ? u.url : String(u);
+
+          // (A) ORIGIN 바로 뒤에 'api/'가 붙은 경우 → 슬래시 삽입
+          //     예) https://hostapi/...  →  https://host/api/...
+          url = url.replace(reOriginNoSlashBeforeApi, ORIGIN + "/api/");
+
+          // (B) ORIGIN + path 분리
+          var m = url.match(/^(https?:\/\/[^\/]+)(\/.*)?$/i);
+          if (!m) return url; // 상대경로면 그대로 두되, 브라우저가 알아서 합침
+          var origin = m[1];
+          var path = (m[2] || "");
+
+          // (C) path 내부 이중 슬래시 정규화
+          path = path.replace(/\/{2,}/g, "/");
+
+          // (D) 중복 'api' 접두어를 하나로 축소
+          //     예) /api/api/v1/..  →  /api/v1/..
+          //     (path가 api로 시작할 때만 축소하며, 없는 경우 새로 추가하지는 않음)
+          path = path.replace(/^\/?(?:api\/)+/i, "/api/");
+
+          return origin + path;
+        } catch (e) {
+          return u;
+        }
+      }
+
+      // fetch 패치
+      window.fetch = function(input, init) {
+        if (typeof input === "string") {
+          return _fetch(normalizeUrl(input), init);
+        } else if (input instanceof Request) {
+          var req = new Request(normalizeUrl(input), input);
+          return _fetch(req, init);
+        } else {
+          return _fetch(input, init);
+        }
+      };
+
+      // axios 사용 시도(있을 때만). 나중에 로드되어도 붙도록 폴링.
+      function attachAxiosInterceptor() {
+        if (window.axios && window.axios.interceptors && !window.__AXIOS_SLASH_GUARD__) {
+          window.__AXIOS_SLASH_GUARD__ = true;
+          window.axios.interceptors.request.use(function (config) {
+            if (config && config.url) config.url = normalizeUrl(config.url);
+            return config;
+          });
+        }
+      }
+      attachAxiosInterceptor();
+      var t = setInterval(function () {
+        attachAxiosInterceptor();
+        if (window.__AXIOS_SLASH_GUARD__) clearInterval(t);
+      }, 200);
+      setTimeout(function(){ clearInterval(t); }, 5000);
+    })();
