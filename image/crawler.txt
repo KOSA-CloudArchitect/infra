@@ -1,1 +1,1 @@
-150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/crawler:5d0e26a
+914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/crawler:3476716

@@ -1,0 +1,98 @@
+apiVersion: v1
+items:
+- apiVersion: karpenter.sh/v1alpha5
+  kind: Provisioner
+  metadata:
+    creationTimestamp: "2025-09-11T15:06:47Z"
+    generation: 1
+    name: core-final
+    resourceVersion: "1691406"
+    uid: 5b196376-2c7f-40ef-a08b-0b0af2c47ccb
+  spec:
+    consolidation:
+      enabled: false
+    labels:
+      node-type: core-final
+      workload: core
+    limits:
+      resources:
+        cpu: 1k
+        memory: 1000Gi
+    provider:
+      amiFamily: AL2
+      blockDeviceMappings:
+      - deviceName: /dev/xvda
+        ebs:
+          deleteOnTermination: true
+          encrypted: true
+          iops: 3000
+          throughput: 125
+          volumeSize: 100Gi
+          volumeType: gp3
+      instanceProfile: KarpenterNodeInstanceProfile-hihypipe-eks-cluster
+      securityGroupSelector:
+        aws:eks:cluster-name: hihypipe-eks-cluster
+      subnetSelector:
+        karpenter.sh/discovery: hihypipe-eks-cluster
+      tags:
+        Name: karpenter-core-node
+        NodeType: core-workload
+        karpenter.sh/discovery: hihypipe-eks-cluster
+        workload: core
+    requirements:
+    - key: kubernetes.io/arch
+      operator: In
+      values:
+      - arm64
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values:
+      - on-demand
+    ttlSecondsAfterEmpty: 300
+    ttlSecondsUntilExpired: 3600
+    weight: 100
+  status: {}
+- apiVersion: karpenter.sh/v1alpha5
+  kind: Provisioner
+  metadata:
+    creationTimestamp: "2025-09-11T08:11:53Z"
+    generation: 1
+    name: llm-arm-ondemand
+    resourceVersion: "1510515"
+    uid: 9dc8a0b0-27c2-4903-bead-cd53cdbc14e4
+  spec:
+    consolidation:
+      enabled: false
+    labels:
+      node-type: llm-arm-ondemand
+      workload: llm-model
+    limits:
+      resources:
+        cpu: 1k
+        memory: 1000Gi
+    providerRef:
+      name: llm-arm-ondemand
+    requirements:
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values:
+      - on-demand
+    - key: kubernetes.io/arch
+      operator: In
+      values:
+      - arm64
+    - key: node.kubernetes.io/instance-type
+      operator: In
+      values:
+      - t4g.medium
+    taints:
+    - effect: NoSchedule
+      key: workload
+      value: llm-model
+    ttlSecondsAfterEmpty: 3600
+    ttlSecondsUntilExpired: 2592000
+    weight: 100
+  status: {}
+kind: List
+metadata:
+  resourceVersion: ""
