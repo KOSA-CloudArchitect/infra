@@ -1,10 +1,12 @@
-# kubernetes/namespaces/web-tier,cache-tier/kustomization.yaml
-
+# .../04-applications/kustomization.yaml (수정 완료)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# 👇 여기에 secrets, configs 폴더 경로를 추가해야 합니다.
 resources:
-- ../web-tier/02-secrets  # Secret 리소스들이 있는 경로
-- ../web-tier/03-configs  # ConfigMap 리소스들이 있는 경로
-- ./04-applications     # Application Deployment가 있는 경로
+- 01-backend-deployment.yaml
+
+images:
+- name: backend-placeholder
+  # 'newName'과 'newTag'는 '- name:' 보다 두 칸 안쪽으로 들여쓰기 되어야 합니다.
+  newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
+  newTag: 3e4c1f5
