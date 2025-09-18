@@ -1,4 +1,4 @@
-# kustomization.yaml
+# kustomization.yaml (수정 완료)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -7,11 +7,9 @@ resources:
 
 images:
 - name: backend-placeholder
-  newName: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
-  newTag: a56027a
+  # 👇 이미지 경로의 계정 ID를 새 것으로 변경
+  newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
+  newTag: 3e4c1f5 # 이 값은 Jenkins가 계속 업데이트합니다.
 
-patches:
-- path: patch-imagepullsecret.yaml
-  target:
-    kind: Deployment
-    name: backend-deployment
+# 👇 patches 블록 전체를 삭제하여 imagePullSecrets 설정을 제거합니다.
+#    이렇게 하면 워커 노드의 IAM 역할(Role)을 사용하여 ECR 인증을 하게 됩니다.
