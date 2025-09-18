@@ -1,0 +1,14 @@
+# .../web-tier,cache-tier/kustomization.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 이 디렉토리 아래의 모든 필수 컴포넌트를 배포 리소스로 지정합니다.
+# Argo CD는 이 파일을 읽고 아래 폴더들의 내용을 모두 클러스터에 적용합니다.
+resources:
+- ./01-foundation
+- ./02-storage
+- ./03-networking
+- ./04-applications
+- ./05-monitoring
+- ./06-logging
