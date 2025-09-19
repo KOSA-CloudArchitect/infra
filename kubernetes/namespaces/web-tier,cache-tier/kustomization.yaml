@@ -7,7 +7,7 @@ kind: Kustomization
 resources:
 - ./01-foundation
 - ./02-storage
-- ./03-networking
+#- ./03-networking 
 - ./04-applications
 - ./05-monitoring
 - ./06-logging
