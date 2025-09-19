@@ -1,6 +1,6 @@
-# .../04-applications/kustomization.yaml (올바른 내용)
+# .../04-applications/kustomization.yaml (수정 완료)
 
-apiVersion: kustomize.config.k8s.io/v1beta1
+apiVersion: kustomize.config.kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
@@ -8,5 +8,6 @@ resources:
 
 images:
 - name: backend-placeholder
+  # 'newName'과 'newTag'는 '- name:' 보다 두 칸 안쪽으로 들여쓰기 되어야 합니다.
   newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
   newTag: 3e4c1f5 # 이 값은 Jenkins가 계속 업데이트합니다.
