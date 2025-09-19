@@ -2,11 +2,62 @@
 # S3 Buckets for Airflow Logs and Spark Checkpoints
 # =============================================================================
 
+# Redshift 원시 데이터 적재용 S3 버킷 (Redshift COPY 대상)
+resource "aws_s3_bucket" "raw_data" {
+  count = var.create_s3_buckets ? 1 : 0
+
+  bucket = var.s3_raw_data_bucket
+
+  tags = {
+    Name        = "${var.project_name}-raw-data"
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+    Purpose     = "Redshift RAW Data"
+  }
+}
+
+# 퍼블릭 액세스 차단
+resource "aws_s3_bucket_public_access_block" "raw_data_pab" {
+  count = var.create_s3_buckets ? 1 : 0
+
+  bucket = aws_s3_bucket.raw_data[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# (옵션) 버전관리
+resource "aws_s3_bucket_versioning" "raw_data_versioning" {
+  count = var.create_s3_buckets && var.s3_bucket_versioning ? 1 : 0
+
+  bucket = aws_s3_bucket.raw_data[0].id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# (옵션) 서버사이드 암호화
+resource "aws_s3_bucket_server_side_encryption_configuration" "raw_data_encryption" {
+  count = var.create_s3_buckets && var.s3_bucket_encryption ? 1 : 0
+
+  bucket = aws_s3_bucket.raw_data[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+    bucket_key_enabled = true
+  }
+}
+
 # Airflow 로그용 S3 버킷
 resource "aws_s3_bucket" "airflow_logs" {
   count = var.create_s3_buckets ? 1 : 0
   
-  bucket = "${var.airflow_logs_bucket_name}-${random_id.bucket_suffix[0].hex}"
+  bucket = var.airflow_logs_bucket_name
   
   tags = {
     Name        = "${var.project_name}-airflow-logs"
@@ -21,7 +72,7 @@ resource "aws_s3_bucket" "airflow_logs" {
 resource "aws_s3_bucket" "spark_checkpoints" {
   count = var.create_s3_buckets ? 1 : 0
   
-  bucket = "${var.spark_checkpoints_bucket_name}-${random_id.bucket_suffix[0].hex}"
+  bucket = var.spark_checkpoints_bucket_name
   
   tags = {
     Name        = "${var.project_name}-spark-checkpoints"
@@ -32,12 +83,7 @@ resource "aws_s3_bucket" "spark_checkpoints" {
   }
 }
 
-# 버킷 이름 고유성을 위한 랜덤 ID
-resource "random_id" "bucket_suffix" {
-  count = var.create_s3_buckets ? 1 : 0
-  
-  byte_length = 4
-}
+## (삭제) 랜덤 suffix 미사용
 
 # S3 버킷 버전 관리
 resource "aws_s3_bucket_versioning" "airflow_logs_versioning" {

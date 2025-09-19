@@ -302,6 +302,20 @@ variable "my_ip_for_bastion" {
   default     = "0.0.0.0/32"
 }
 
+# Bastion Host AMI ID (e.g., Amazon Linux 2023 in ap-northeast-2)
+variable "bastion_ami_id" {
+  description = "AMI ID for Bastion Host"
+  type        = string
+  default     = ""
+}
+
+# Bastion Host key pair name
+variable "bastion_key_pair_name" {
+  description = "Key pair name for Bastion Host"
+  type        = string
+  default     = "jenkins"
+}
+
 # GPU 노드그룹 - AWS GPU 인스턴스 제한으로 인해 주석처리
 # 필요시 AWS Support에 GPU 인스턴스 제한 해제 요청 후 활성화
 # variable "gpu_node_group" {

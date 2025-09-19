@@ -110,6 +110,21 @@ resource "aws_lb_target_group" "jenkins_tg" {
   }
 }
 
+resource "aws_security_group_rule" "allow_agents_from_eks_nodes" {
+  count = var.create_jenkins_server && var.create_eks_cluster ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 8080 # 에이전트가 WebSocket으로 접속할 HTTP 포트
+  to_port                  = 8080
+  protocol                 = "tcp"
+  
+  # eks.tf에서 생성된 EKS 모듈의 "워커 노드" 보안 그룹 ID를 자동으로 참조합니다.
+  source_security_group_id = module.eks[0].node_security_group_id
+  
+  security_group_id        = aws_security_group.jenkins_sg[0].id
+  description              = "Allow Jenkins agents from EKS worker nodes (for WebSocket)"
+}
+
 # ALB Listener (HTTP:80 요청을 Target Group으로 전달)
 resource "aws_lb_listener" "jenkins_listener" {
   count = var.create_jenkins_server ? 1 : 0
@@ -242,3 +257,39 @@ resource "aws_security_group_rule" "allow_ssh_from_bastion" {
   description              = "Allow SSH from Bastion Host"
 }
 
+# 1. 고정 IP (Elastic IP) 리소스 생성
+resource "aws_eip" "bastion_eip" {
+  count  = var.create_jenkins_server ? 1 : 0
+  domain = "vpc" # VPC 환경용 EIP
+  tags = {
+    Name = "${var.project_name}-bastion-eip"
+  }
+}
+
+# 2. Bastion Host EC2 인스턴스 생성
+resource "aws_instance" "bastion_host" {
+  count = var.create_jenkins_server ? 1 : 0
+
+  ami           = var.bastion_ami_id      # Amazon Linux 등 Bastion용 AMI ID
+  instance_type = "t3.nano"               # Bastion Host는 t3.nano로도 충분
+  key_name      = var.bastion_key_pair_name # 베스천 접속용 키 페어
+
+  # 베스천 호스트는 반드시 Public Subnet에 위치해야 함
+  subnet_id              = module.vpc_app.public_subnets[0] 
+  # jenkins.tf에 이미 정의된 bastion_sg를 사용
+  vpc_security_group_ids = [aws_security_group.bastion_sg[0].id]
+  # Public IP 자동 할당 (EIP 연결을 위해)
+  associate_public_ip_address = true 
+
+  tags = {
+    Name = "${var.project_name}-bastion-host"
+  }
+}
+
+# 3. 생성된 인스턴스와 EIP를 연결
+resource "aws_eip_association" "bastion_eip_assoc" {
+  count = var.create_jenkins_server ? 1 : 0
+  
+  instance_id   = aws_instance.bastion_host[0].id
+  allocation_id = aws_eip.bastion_eip[0].id
+}

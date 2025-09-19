@@ -265,7 +265,7 @@ module "eks" {
     {
       # IAM User: kwon -> ClusterAdmin
       user_kwon_admin = {
-        principal_arn = "arn:aws:iam::150297826798:user/kwon"
+        principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/kwon"
         policy_associations = {
           admin = {
             policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
@@ -276,7 +276,7 @@ module "eks" {
 
       # IAM User: sunho -> ClusterAdmin
       user_sunho_admin = {
-        principal_arn = "arn:aws:iam::150297826798:user/sunho"
+        principal_arn = "arn:aws:iam::914215749228:user/sunho"
         policy_associations = {
           admin = {
             policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
@@ -287,7 +287,7 @@ module "eks" {
 
       # IAM User: tjpark -> ClusterAdmin
       tjpark = {
-        principal_arn = "arn:aws:iam::150297826798:user/tjpark"
+        principal_arn = "arn:aws:iam::914215749228:user/tjpark"
         policy_associations = {
           admin = {
             policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
