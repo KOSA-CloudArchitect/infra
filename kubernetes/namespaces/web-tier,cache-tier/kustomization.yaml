@@ -1,12 +1,13 @@
-# .../04-applications/kustomization.yaml (수정 완료)
+# kubernetes/namespaces/web-tier,cache-tier/kustomization.yaml (올바른 내용)
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# 이 디렉토리 아래의 모든 컴포넌트를 배포하도록 지정합니다.
 resources:
-- 01-backend-deployment.yaml
-
-images:
-- name: backend-placeholder
-  # 'newName'과 'newTag'는 '- name:' 보다 두 칸 안쪽으로 들여쓰기 되어야 합니다.
-  newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
-  newTag: 3e4c1f5
+- ./01-foundation
+- ./02-storage
+- ./03-networking
+- ./04-applications
+- ./05-monitoring
+- ./06-logging
