@@ -16,7 +16,7 @@ resource "aws_redshiftserverless_namespace" "main" {
   iam_roles = [aws_iam_role.redshift_s3_copy_role[0].arn]
   
   # 암호화 설정
-  kms_key_id = var.redshift_kms_key_id
+  #kms_key_id = var.redshift_kms_key_id
   
   # 로깅 설정 (CloudWatch 비활성화)
   # log_exports = ["userlog", "connectionlog", "useractivitylog"]

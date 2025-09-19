@@ -206,6 +206,7 @@ deploy_phase6() {
     terraform apply -target=module.eks.eks_managed_node_groups.airflow_core_on -auto-approve
     terraform apply -target=module.eks.eks_managed_node_groups.spark_driver_on -auto-approve
     terraform apply -target=module.eks.eks_managed_node_groups.kafka_storage_on -auto-approve
+    terraform apply -target=module.eks.eks_managed_node_groups.llm_model_on -auto-approve
     
     log_info "Spot 노드 그룹 생성 중..."
     terraform apply -target=module.eks.eks_managed_node_groups.airflow_worker_spot -auto-approve
@@ -230,15 +231,43 @@ deploy_phase7() {
     log_info "VPN Route 설정 중..."
     terraform apply -target=aws_vpn_connection_route.aws_to_onprem_route -auto-approve
     
-    log_success "Phase 7 완료: VPN 연결 배포됨"
+    log_info "VPN Route Propagation 설정 중..."
+    terraform apply -target=aws_vpn_gateway_route_propagation.vgw_propagation_private -auto-approve
+    
+    log_success "Phase 7 완료: VPN 연결 및 라우팅 배포됨"
 }
 
 deploy_phase8() {
-    log_info "Phase 8: Jenkins 서버 배포 시작..."
+    log_info "Phase 9: Redshift Serverless 배포 시작..."
+    
+    log_info "Redshift 보안 그룹 생성 중..."
+    terraform apply -target=aws_security_group.redshift_sg -auto-approve
+    
+    log_info "Redshift IAM 역할 생성 중..."
+    terraform apply -target=aws_iam_role.redshift_s3_copy_role -auto-approve
+    terraform apply -target=aws_iam_policy.redshift_s3_copy_policy -auto-approve
+    terraform apply -target=aws_iam_role_policy_attachment.redshift_s3_copy_policy_attachment -auto-approve
+    
+    log_info "Airflow Redshift 정책 생성 중..."
+    terraform apply -target=aws_iam_policy.airflow_redshift_policy -auto-approve
+    terraform apply -target=aws_iam_role_policy_attachment.airflow_redshift_policy_attachment -auto-approve
+    
+    log_info "Redshift Serverless Namespace 생성 중..."
+    terraform apply -target=aws_redshiftserverless_namespace.main -auto-approve
+    
+    log_info "Redshift Serverless Workgroup 생성 중..."
+    terraform apply -target=aws_redshiftserverless_workgroup.main -auto-approve
+    
+    log_success "Phase 9 완료: Redshift Serverless 배포됨"
+}
+
+deploy_phase9() {
+    log_info "Phase 10: Jenkins 서버 배포 시작..."
     
     log_info "Jenkins 보안 그룹 생성 중..."
     terraform apply -target=aws_security_group.alb_sg -auto-approve
     terraform apply -target=aws_security_group.jenkins_sg -auto-approve
+    terraform apply -target=aws_security_group.bastion_sg -auto-approve
     
     log_info "Jenkins ALB 생성 중..."
     terraform apply -target=aws_lb.jenkins_alb -auto-approve
@@ -252,14 +281,32 @@ deploy_phase8() {
     log_info "Jenkins 서버 생성 중..."
     terraform apply -target=aws_instance.jenkins_controller -auto-approve
     
+    log_info "Bastion Host 생성 중..."
+    terraform apply -target=aws_eip.bastion_eip -auto-approve
+    terraform apply -target=aws_instance.bastion_host -auto-approve
+    terraform apply -target=aws_eip_association.bastion_eip_assoc -auto-approve
+    
+    log_info "Jenkins 보안 그룹 규칙 생성 중..."
+    terraform apply -target=aws_security_group_rule.allow_agents_from_eks_nodes -auto-approve
+    terraform apply -target=aws_security_group_rule.allow_ssh_from_bastion -auto-approve
+    
     log_info "Jenkins 타겟 그룹 첨부 중..."
     terraform apply -target=aws_lb_target_group_attachment.jenkins_attachment -auto-approve
     
-    log_success "Phase 8 완료: Jenkins 서버 배포됨"
+    log_success "Phase 10 완료: Jenkins 서버 및 Bastion Host 배포됨"
 }
 
-deploy_phase9() {
-    log_info "Phase 9: Kubernetes 리소스 배포 시작..."
+deploy_phase10() {
+    log_info "Phase 11: Karpenter 서브넷 태그 설정..."
+    
+    log_info "VPC APP 서브넷에 Karpenter 태그 추가 중..."
+    terraform apply -target=module.vpc_app -auto-approve
+    
+    log_success "Phase 11 완료: Karpenter 서브넷 태그 설정됨"
+}
+
+deploy_phase11() {
+    log_info "Phase 8: Kubernetes 리소스 배포 시작..."
     
 
     # terraform.tfvars에서 create_k8s_resources를 true로 변경
@@ -288,14 +335,15 @@ deploy_phase9() {
     log_info "Kubernetes 네임스페이스 및 서비스 어카운트 생성 중..."
     terraform apply -target=kubernetes_namespace.airflow -auto-approve
     terraform apply -target=kubernetes_namespace.spark -auto-approve
+    terraform apply -target=kubernetes_namespace.kafka -auto-approve
     terraform apply -target=kubernetes_service_account.airflow_irsa -auto-approve
     terraform apply -target=kubernetes_service_account.spark_irsa -auto-approve
     
-    log_success "Phase 9 완료: Kubernetes 리소스 배포됨"
+    log_success "Phase 8 완료: Kubernetes 리소스 배포됨"
 }
 
-deploy_phase10() {
-    log_info "Phase 10: 최종 검증 시작..."
+deploy_phase12() {
+    log_info "Phase 12: 최종 검증 시작..."
     
     # kubectl 연결 확인
     log_info "kubectl 연결 상태 확인 중..."
@@ -309,7 +357,7 @@ deploy_phase10() {
     kubectl get pods -A
     kubectl get namespaces
     
-    log_success "Phase 10 완료: 최종 검증 완료"
+    log_success "Phase 12 완료: 최종 검증 완료"
 }
 
 # 메인 함수
@@ -344,9 +392,16 @@ main() {
     deploy_phase5
     deploy_phase6
     deploy_phase7
+    # Phase 8: Kubernetes 리소스(airflow-irsa 포함)
+    deploy_phase11
+    # Phase 9: Redshift
     deploy_phase8
+    # Phase 10: Jenkins
     deploy_phase9
+    # Phase 11: Karpenter 태그
     deploy_phase10
+    # Phase 12: 최종 검증
+    deploy_phase12
     
     log_success "🎉 Production 환경 배포가 완료되었습니다!"
     
@@ -360,9 +415,14 @@ main() {
     echo ""
     log_info "=== Jenkins 정보 ==="
     terraform output jenkins_alb_dns_name 2>/dev/null || echo "Jenkins ALB DNS: N/A"
+    terraform output bastion_eip 2>/dev/null || echo "Bastion Host EIP: N/A"
     echo ""
     log_info "=== RDS 정보 ==="
     terraform output rds_endpoint 2>/dev/null || echo "RDS 엔드포인트: N/A"
+    echo ""
+    log_info "=== Redshift Serverless 정보 ==="
+    terraform output redshift_namespace_name 2>/dev/null || echo "Redshift Namespace: N/A"
+    terraform output redshift_workgroup_name 2>/dev/null || echo "Redshift Workgroup: N/A"
     echo ""
     log_info "=== S3 버킷 정보 ==="
     terraform output airflow_logs_bucket_name 2>/dev/null || echo "Airflow 로그 버킷: N/A"

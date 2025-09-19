@@ -103,6 +103,15 @@ module "vpc_app" {
   single_nat_gateway = var.single_nat_gateway
 
 
+  # Karpenter용 서브넷 태그 추가
+  public_subnet_tags = {
+    "karpenter.sh/discovery/${local.eks_cluster_name}" = "*"
+  }
+  
+  private_subnet_tags = {
+    "karpenter.sh/discovery/${local.eks_cluster_name}" = "*"
+  }
+
   tags = {
     Owner       = var.owner
     CostCenter  = var.cost_center
@@ -226,6 +235,15 @@ resource "aws_vpn_connection_route" "aws_to_onprem_route" {
   destination_cidr_block = var.onprem_cidr
   vpn_connection_id      = aws_vpn_connection.aws_to_onprem[0].id
 }
+
+
+resource "aws_vpn_gateway_route_propagation" "vgw_propagation_private" {
+  count = var.create_vpn_connection ? length(module.vpc_app.private_route_table_ids) : 0
+
+  vpn_gateway_id = aws_vpn_gateway.aws_vgw[0].id
+  route_table_id = module.vpc_app.private_route_table_ids[count.index]
+}
+
 
 # =============================================================================
 # 단방향 통신 설정
