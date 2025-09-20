@@ -1,0 +1,11 @@
+# .../01-foundation/kustomization.yaml (새로 생성)
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- 01-namespaces.yaml
+- 02-service-accounts.yaml
+- 03-configmaps-secrets.yaml
+- 04-database-secret-rds.yaml
+- 05-external-services-secret.yaml
