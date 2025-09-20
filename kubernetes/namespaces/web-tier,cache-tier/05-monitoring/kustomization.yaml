@@ -1,0 +1,11 @@
+# .../05-monitoring/kustomization.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- 01-prometheus.yaml
+- 02-redis-exporter.yaml
+- 03-grafana.yaml
+- 04-alertmanager.yaml
+- 05-redis-monitoring.yaml

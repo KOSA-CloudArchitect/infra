@@ -1,0 +1,15 @@
+# .../02-storage/kustomization.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- 01-redis-secret.yaml
+- 02-redis-configmap.yaml
+- 03-redis-master-statefulset.yaml
+- 04-redis-slave-statefulset.yaml
+- 05-redis-services.yaml
+- 06-rds-table-setup-configmap.yaml
+- 07-rds-table-setup-job.yaml
+- 08-db-setup-job.yaml
+- 10-redis-monitoring.yaml
