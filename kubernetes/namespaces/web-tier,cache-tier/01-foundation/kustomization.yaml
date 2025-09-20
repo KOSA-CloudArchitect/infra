@@ -6,6 +6,6 @@ kind: Kustomization
 resources:
 - 01-namespaces.yaml
 - 02-service-accounts.yaml
-- 03-configmaps-secrets.yaml
+#- 03-configmaps-secrets.yaml
 - 04-database-secret-rds.yaml
 - 05-external-services-secret.yaml
