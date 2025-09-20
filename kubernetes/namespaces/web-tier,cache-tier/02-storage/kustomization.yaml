@@ -12,4 +12,4 @@ resources:
 - 06-rds-table-setup-configmap.yaml
 - 07-rds-table-setup-job.yaml
 - 08-db-setup-job.yaml
-- 10-redis-monitoring.yaml
+#- 10-redis-monitoring.yaml
