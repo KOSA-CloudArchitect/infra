@@ -5,8 +5,12 @@ kind: Kustomization
 
 resources:
 - 01-backend-deployment.yaml
+- 03-frontend-deployment.yaml  # 프론트엔드 리소스 추가
 
 images:
 - name: backend-placeholder
   newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
   newTag: 3e4c1f5
+- name: frontend-placeholder   
+  newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-frontend
+  newTag: ea0dea2
