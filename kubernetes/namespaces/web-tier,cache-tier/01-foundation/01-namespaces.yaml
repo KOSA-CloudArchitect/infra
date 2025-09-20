@@ -1,8 +1,12 @@
+# 01-namespaces.yaml (수정 완료)
+
 # EKS Migration - Namespaces and Basic Resources
 # Task 1.2: 네임스페이스 및 기본 리소스 생성
 
+# --- Namespace Definitions ---
+
 ---
-# Web Tier Namespace - Frontend, Backend API and WebSocket services
+# Web Tier Namespace
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -16,7 +20,7 @@ metadata:
     description: "Web tier namespace for Frontend, Backend API and WebSocket services"
 
 ---
-# Cache Tier Namespace - Redis cache cluster
+# Cache Tier Namespace
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -30,7 +34,7 @@ metadata:
     description: "Cache tier namespace for Redis cluster"
 
 ---
-# Monitoring Namespace - Prometheus, Grafana, AlertManager
+# Monitoring Namespace
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -42,6 +46,32 @@ metadata:
     tier: monitoring
   annotations:
     description: "Monitoring namespace for Prometheus, Grafana, and AlertManager"
+
+# --- 👇 아래에 누락된 Namespace 정의들을 추가합니다. ---
+
+---
+# Backend Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend
+
+---
+# Redis Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis
+
+---
+# Kafka Namespace (ResourceQuota가 이미 존재하므로 추가)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka
+
+
+# --- Resource Quota Definitions ---
 
 ---
 # Resource Quota for web-tier namespace
