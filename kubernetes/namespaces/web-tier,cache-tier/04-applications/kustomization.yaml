@@ -10,7 +10,7 @@ resources:
 images:
 - name: backend-placeholder
   newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-backend
-  newTag: 3e4c1f5
+  newTag: 922df8f
 - name: frontend-placeholder   
   newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-frontend
   newTag: ea0dea2
