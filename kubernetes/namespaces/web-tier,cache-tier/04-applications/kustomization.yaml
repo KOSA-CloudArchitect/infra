@@ -14,3 +14,4 @@ images:
 - name: frontend-placeholder   
   newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-frontend
   newTag: ea0dea2
+
