@@ -5,7 +5,7 @@ kind: Kustomization
 
 # 이 디렉토리 아래의 모든 컴포넌트를 배포하도록 지정합니다.
 resources:
-- ./01-foundation  # Namespace, Secret, ConfigMap 등이 포함된 경로
+#- ./01-foundation  # Namespace, Secret, ConfigMap 등이 포함된 경로
 #- ./02-storage
 # - ./03-networking  # 로드밸런서 문제는 해결될 때까지 주석 처리 유지
 - ./04-applications
