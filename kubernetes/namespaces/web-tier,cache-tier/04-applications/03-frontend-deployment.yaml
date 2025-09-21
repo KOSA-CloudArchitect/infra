@@ -60,7 +60,7 @@ spec:
 
       containers:
       - name: frontend
-        image: 150297826798.dkr.ecr.ap-northeast-2.amazonaws.com/web-tier/front-end:latest
+        image: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-server-frontend
         imagePullPolicy: Always
         ports:
         - name: http
