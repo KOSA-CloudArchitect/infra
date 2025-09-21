@@ -13,5 +13,5 @@ images:
   newTag: 922df8f
 - name: frontend-placeholder   
   newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-tier/frontend
-  newTag: c27c9bb
+  newTag: eb61fff
 
