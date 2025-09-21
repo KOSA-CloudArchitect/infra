@@ -60,7 +60,7 @@ spec:
 
       containers:
       - name: frontend
-        image: frontend-placeholder 
+        image: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-tier/frontend:latest
         imagePullPolicy: Always
         ports:
         - name: http
