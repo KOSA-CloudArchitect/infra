@@ -15,3 +15,9 @@ images:
   newName: 914215749228.dkr.ecr.ap-northeast-2.amazonaws.com/web-tier/frontend
   newTag: eb61fff
 
+# 👇 아래 patches 블록을 추가합니다.
+patches:
+- path: patch-backend-env.yaml
+  target:
+    kind: Deployment
+    name: backend-deployment
